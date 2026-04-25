@@ -1,0 +1,540 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="light" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PumpJack Monitor{% endblock %}</title>
+
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    /* ══════════════════════════════════════════════════════
+       Theme variables
+       ══════════════════════════════════════════════════════ */
+    :root {
+      --sidebar-width:  240px;
+      --topbar-height:  56px;
+      --clr-normal:     #28a745;
+      --clr-warning:    #ffc107;
+      --clr-critical:   #dc3545;
+      --clr-offline:    #6c757d;
+      --clr-info:       #0dcaf0;
+    }
+
+    /* Light theme (default) */
+    html[data-theme="light"] {
+      --bg-body:          #f6f8fa;
+      --bg-sidebar:       #ffffff;
+      --bg-topbar:        #ffffff;
+      --bg-card:          #ffffff;
+      --bg-card-header:   #f6f8fa;
+      --bg-input:         #ffffff;
+      --bg-hover:         rgba(0,0,0,.04);
+      --border-clr:       #d0d7de;
+      --txt-primary:      #1f2328;
+      --txt-muted:        #636c76;
+      --txt-dim:          #a0a7af;
+      --txt-brand:        #1f2328;
+      --sidebar-active:   #eaeef2;
+      --sidebar-link:     #636c76;
+      --topbar-shadow:    0 1px 0 #d0d7de;
+    }
+
+    /* Dark theme */
+    html[data-theme="dark"] {
+      --bg-body:          #0f1117;
+      --bg-sidebar:       #161b22;
+      --bg-topbar:        #161b22;
+      --bg-card:          #161b22;
+      --bg-card-header:   #21262d;
+      --bg-input:         #21262d;
+      --bg-hover:         rgba(255,255,255,.025);
+      --border-clr:       #30363d;
+      --txt-primary:      #dee2e6;
+      --txt-muted:        #8b949e;
+      --txt-dim:          #484f58;
+      --txt-brand:        #f0f6fc;
+      --sidebar-active:   #21262d;
+      --sidebar-link:     #8b949e;
+      --topbar-shadow:    0 1px 0 #30363d;
+    }
+
+    /* ── Base ─────────────────────────────────────────── */
+    body {
+      background: var(--bg-body);
+      color: var(--txt-primary);
+      transition: background .2s, color .2s;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-width);
+      min-height: 100vh;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-clr);
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      transition: background .2s, border-color .2s;
+    }
+    .sidebar .brand {
+      padding: .75rem 1rem;
+      border-bottom: 1px solid var(--border-clr);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sidebar .brand img {
+      width: 168px;
+      height: auto;
+      display: block;
+    }
+
+    .sidebar nav a {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .5rem 1.25rem;
+      color: var(--sidebar-link);
+      text-decoration: none;
+      font-size: .875rem;
+      transition: color .15s, background .15s;
+    }
+    .sidebar nav a:hover,
+    .sidebar nav a.active {
+      color: var(--txt-primary);
+      background: var(--sidebar-active);
+    }
+    .sidebar nav a i { font-size: 1rem; width: 18px; text-align: center; }
+
+    .sidebar-section {
+      padding: .5rem 1.25rem .25rem;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--txt-dim);
+      margin-top: .5rem;
+    }
+
+    /* ── Theme toggle ─────────────────────────────────── */
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border-clr);
+      color: var(--txt-muted);
+      border-radius: 6px;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: .85rem;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover {
+      color: var(--txt-primary);
+      border-color: var(--txt-muted);
+      background: var(--sidebar-active);
+    }
+
+    /* ── Main layout ──────────────────────────────────── */
+    .main-wrapper { margin-left: var(--sidebar-width); min-height: 100vh; }
+
+    .topbar {
+      height: var(--topbar-height);
+      background: var(--bg-topbar);
+      border-bottom: 1px solid var(--border-clr);
+      display: flex;
+      align-items: center;
+      padding: 0 1.5rem;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 500;
+      transition: background .2s, border-color .2s;
+    }
+    .topbar .page-title { font-size: 1rem; font-weight: 600; color: var(--txt-primary); flex: 1; }
+
+    .content-area { padding: 1.5rem; }
+
+    /* ── Cards ────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card) !important;
+      border-color: var(--border-clr) !important;
+      transition: background .2s, border-color .2s;
+    }
+    .card-header {
+      background: var(--bg-card-header) !important;
+      border-color: var(--border-clr) !important;
+    }
+
+    /* ── Tables ───────────────────────────────────────── */
+    .table {
+      --bs-table-bg: transparent;
+      --bs-table-color: var(--txt-primary);
+      --bs-table-hover-bg: var(--bg-hover);
+    }
+    .table th {
+      border-color: var(--border-clr);
+      color: var(--txt-muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing:.05em;
+    }
+    .table td { border-color: var(--bg-card-header); vertical-align: middle; }
+
+    /* ── Forms ────────────────────────────────────────── */
+    .form-control, .form-select {
+      background: var(--bg-input);
+      border-color: var(--border-clr);
+      color: var(--txt-primary);
+    }
+    .form-control:focus, .form-select:focus {
+      background: var(--bg-input);
+      border-color: #0969da;
+      color: var(--txt-primary);
+      box-shadow: 0 0 0 .2rem rgba(9,105,218,.15);
+    }
+    html[data-theme="dark"] .form-control:focus,
+    html[data-theme="dark"] .form-select:focus {
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 .2rem rgba(88,166,255,.2);
+    }
+
+    /* ── Buttons ──────────────────────────────────────── */
+    .btn-outline-secondary {
+      color: var(--txt-muted);
+      border-color: var(--border-clr);
+    }
+    .btn-outline-secondary:hover {
+      background: var(--sidebar-active);
+      color: var(--txt-primary);
+      border-color: var(--txt-muted);
+    }
+
+    /* ── Stat cards ───────────────────────────────────── */
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-clr);
+      border-radius: .5rem;
+      padding: 1rem 1.25rem;
+    }
+    .stat-card .label { font-size: .75rem; color: var(--txt-muted); margin-bottom: .25rem; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--txt-primary); }
+
+    /* ── Status/severity helpers ──────────────────────── */
+    .badge-normal               { background: #dafbe1; color: #1a7f37; }
+    .badge-needs_inspection     { background: #fff8c5; color: #9a6700; }
+    .badge-needs_reconfiguration{ background: #fff1e5; color: #bc4c00; }
+    .badge-site_visit_required  { background: #ffebe9; color: #cf222e; }
+    .badge-in_progress          { background: #ddf4ff; color: #0969da; }
+    .badge-resolved             { background: var(--bg-card-header); color: var(--txt-muted); }
+    .badge-offline              { background: var(--bg-card-header); color: var(--txt-muted); }
+    .badge-false_positive       { background: var(--bg-card-header); color: var(--txt-muted); }
+
+    html[data-theme="dark"] .badge-normal               { background:#1a4731; color:#3fb950; }
+    html[data-theme="dark"] .badge-needs_inspection     { background:#4a3000; color:#ffc107; }
+    html[data-theme="dark"] .badge-needs_reconfiguration{ background:#4a2800; color:#fd7e14; }
+    html[data-theme="dark"] .badge-site_visit_required  { background:#4a0e10; color:#f85149; }
+    html[data-theme="dark"] .badge-in_progress          { background:#0d2b4e; color:#58a6ff; }
+
+    .sev-info     { color: #0969da; }
+    .sev-warning  { color: #9a6700; }
+    .sev-critical { color: #cf222e; }
+    html[data-theme="dark"] .sev-info     { color: #58a6ff; }
+    html[data-theme="dark"] .sev-warning  { color: #ffc107; }
+    html[data-theme="dark"] .sev-critical { color: #f85149; }
+
+    .online-dot  { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--clr-normal); }
+    .offline-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--clr-offline); }
+
+    /* ── Notification badge ───────────────────────────── */
+    #notif-badge {
+      position: absolute; top: 4px; right: 4px;
+      background: #cf222e;
+      color: #fff; font-size: .65rem;
+      border-radius: 10px; padding: 1px 5px;
+      display: none;
+    }
+
+    /* ── Toast container ──────────────────────────────── */
+    #toast-container {
+      position: fixed; top: 70px; right: 1rem;
+      z-index: 9999;
+      display: flex; flex-direction: column; gap: .5rem;
+    }
+    .pj-toast {
+      min-width: 280px; max-width: 380px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+      font-size: .85rem;
+    }
+
+    /* ── Inline code only (не внутри <pre>) ──────────── */
+    :not(pre) > code {
+      color: #0550ae;
+      background: #eaf0f8;
+      padding: .1em .35em;
+      border-radius: 4px;
+      font-size: .88em;
+    }
+    html[data-theme="dark"] :not(pre) > code {
+      color: #79c0ff;
+      background: #1c2938;
+    }
+
+    /* Блоки <pre> — всегда тёмный фон, светлый текст ── */
+    pre {
+      background: #0d1117 !important;
+      color: #c9d1d9 !important;
+      border-radius: 6px;
+      padding: .85rem 1rem;
+      font-size: .82rem;
+      line-height: 1.55;
+      overflow-x: auto;
+      border: 1px solid #30363d;
+    }
+    pre code {
+      color: inherit !important;
+      background: none !important;
+      padding: 0;
+      font-size: inherit;
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar">
+  <a href="{% url 'dashboard' %}" class="brand">
+    <img src="{% static 'img/logo.png' %}" alt="Tatneft Monitoring">
+  </a>
+  <nav class="flex-grow-1 py-2">
+    <div class="sidebar-section">Мониторинг</div>
+    <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2"></i> Дашборд
+    </a>
+    <a href="{% url 'device-list' %}" class="{% if 'device' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cpu"></i> Устройства
+    </a>
+    <a href="{% url 'device-map' %}">
+      <i class="bi bi-map"></i> Карта
+    </a>
+
+    <div class="sidebar-section">Работа</div>
+    <a href="{% url 'incident-list' %}" class="{% if 'incident' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-exclamation-triangle"></i> Инциденты
+    </a>
+    <a href="{% url 'maintenance-list' %}">
+      <i class="bi bi-tools"></i> Обслуживание
+    </a>
+    <a href="{% url 'notifications' %}" style="position:relative">
+      <i class="bi bi-bell"></i> Уведомления
+      <span id="notif-badge">{{ unread_notifications_count }}</span>
+    </a>
+    <a href="{% url 'remote-access-log' %}">
+      <i class="bi bi-terminal"></i> Удалённый доступ
+    </a>
+
+    <div class="sidebar-section">Система</div>
+    <a href="/admin/" target="_blank">
+      <i class="bi bi-shield-lock"></i> Админка
+    </a>
+    <a href="/api/docs/" target="_blank">
+      <i class="bi bi-code-square"></i> API Docs
+    </a>
+  </nav>
+
+  <!-- User info + theme toggle -->
+  <div class="p-3 border-top d-flex align-items-center justify-content-between"
+       style="border-color:var(--border-clr)!important; font-size:.8rem;">
+    <div>
+      <div style="color:var(--txt-primary);font-weight:500">
+        {{ request.user.get_full_name|default:request.user.username }}
+      </div>
+      <div style="font-size:.7rem;color:var(--txt-muted)">{{ request.user.get_role_display }}</div>
+      <a href="{% url 'logout' %}" style="color:var(--txt-muted);font-size:.75rem;text-decoration:none">Выйти</a>
+    </div>
+    <button class="theme-toggle" id="themeToggle" title="Переключить тему">
+      <i class="bi bi-moon"></i>
+    </button>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<div class="main-wrapper">
+  <div class="topbar">
+    <div class="page-title">{% block page_title %}{% endblock %}</div>
+    {% block topbar_actions %}{% endblock %}
+  </div>
+
+  <div class="content-area">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<!-- Toast container (alerts + Django messages) -->
+<div id="toast-container"></div>
+
+<!-- Django messages data (rendered hidden, shown as toasts) -->
+{% if messages %}
+<script id="django-messages" type="application/json">
+[{% for msg in messages %}{"text": "{{ msg|escapejs }}", "tags": "{{ msg.tags }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
+{% endif %}
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+// ════════════════════════════════════════
+//  Theme toggle
+// ════════════════════════════════════════
+const html          = document.documentElement;
+const themeToggleBtn = document.getElementById('themeToggle');
+
+function applyTheme(theme) {
+  html.setAttribute('data-theme',    theme);
+  html.setAttribute('data-bs-theme', theme);
+  localStorage.setItem('pj-theme', theme);
+  themeToggleBtn.innerHTML = theme === 'dark'
+    ? '<i class="bi bi-sun"></i>'
+    : '<i class="bi bi-moon"></i>';
+  themeToggleBtn.title = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема';
+}
+
+// Init from storage (default: light)
+applyTheme(localStorage.getItem('pj-theme') || 'light');
+
+themeToggleBtn.addEventListener('click', () => {
+  applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+
+// ════════════════════════════════════════
+//  Toast helper
+// ════════════════════════════════════════
+const toastContainer = document.getElementById('toast-container');
+
+function showToast(title, message, level, delay) {
+  delay = delay || 5000;
+  const iconMap = {
+    success: 'bi-check-circle-fill',
+    danger:  'bi-x-circle-fill',
+    warning: 'bi-exclamation-triangle-fill',
+    info:    'bi-info-circle-fill',
+  };
+  const colorMap = {
+    success: '#1a7f37', danger: '#cf222e',
+    warning: '#9a6700', info:   '#0969da',
+  };
+  const bgMap = {
+    success: '#dafbe1', danger: '#ffebe9',
+    warning: '#fff8c5', info:   '#ddf4ff',
+  };
+  const icon  = iconMap[level]  || iconMap.info;
+  const color = colorMap[level] || colorMap.info;
+  const bg    = bgMap[level]    || bgMap.info;
+
+  const id  = 'toast-' + Date.now() + Math.random().toString(36).slice(2);
+  const body = title
+    ? `<div style="font-weight:600;margin-bottom:2px">${title}</div><div style="opacity:.85">${message}</div>`
+    : `<div>${message}</div>`;
+
+  const html = `
+    <div id="${id}" class="toast pj-toast show"
+         style="background:${bg};border:1px solid ${color}30"
+         role="alert" aria-live="assertive">
+      <div class="d-flex align-items-start p-3 gap-2">
+        <i class="bi ${icon} mt-1 flex-shrink-0" style="color:${color};font-size:1rem"></i>
+        <div class="flex-grow-1" style="color:#1f2328">${body}</div>
+        <button type="button" class="btn-close btn-close ms-1 flex-shrink-0"
+                style="font-size:.7rem" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div style="height:3px;background:${color};border-radius:0 0 10px 10px;
+                  animation:toastProgress ${delay}ms linear forwards"></div>
+    </div>`;
+
+  toastContainer.insertAdjacentHTML('beforeend', html);
+  const el = document.getElementById(id);
+
+  // Auto-remove
+  setTimeout(() => {
+    el.style.transition = 'opacity .4s, transform .4s';
+    el.style.opacity    = '0';
+    el.style.transform  = 'translateX(20px)';
+    setTimeout(() => el.remove(), 400);
+  }, delay);
+
+  // Manual close
+  el.querySelector('[data-bs-dismiss="toast"]').addEventListener('click', () => {
+    el.style.transition = 'opacity .2s';
+    el.style.opacity    = '0';
+    setTimeout(() => el.remove(), 200);
+  });
+}
+
+// Progress bar animation
+const toastStyle = document.createElement('style');
+toastStyle.textContent = `
+  @keyframes toastProgress {
+    from { width: 100%; }
+    to   { width: 0%; }
+  }
+  .pj-toast { animation: toastSlideIn .25s ease; }
+  @keyframes toastSlideIn {
+    from { opacity:0; transform: translateX(20px); }
+    to   { opacity:1; transform: translateX(0); }
+  }
+`;
+document.head.appendChild(toastStyle);
+
+// ── Show Django messages as toasts ──────
+const djMsgEl = document.getElementById('django-messages');
+if (djMsgEl) {
+  try {
+    JSON.parse(djMsgEl.textContent).forEach(m => {
+      const lvl = m.tags.includes('error')   ? 'danger'
+                : m.tags.includes('success') ? 'success'
+                : m.tags.includes('warning') ? 'warning'
+                : 'info';
+      showToast('', m.text, lvl, 6000);
+    });
+  } catch(_) {}
+}
+
+// ════════════════════════════════════════
+//  Notification badge
+// ════════════════════════════════════════
+const badge = document.getElementById('notif-badge');
+function updateBadge(count) {
+  if (count > 0) { badge.style.display = 'inline'; badge.textContent = count > 99 ? '99+' : count; }
+  else { badge.style.display = 'none'; }
+}
+updateBadge({{ unread_notifications_count }});
+
+// ════════════════════════════════════════
+//  WebSocket real-time alerts
+// ════════════════════════════════════════
+{% if request.user.is_authenticated %}
+const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const alertWs = new WebSocket(`${wsProto}//${window.location.host}/ws/alerts/`);
+alertWs.onmessage = (e) => {
+  const data = JSON.parse(e.data);
+  if (data.type === 'alert') {
+    const cnt = parseInt(badge.textContent || '0') + 1;
+    updateBadge(cnt);
+    const lvl = data.severity === 'critical' ? 'danger'
+              : data.severity === 'warning'  ? 'warning'
+              : 'info';
+    showToast(data.title, data.message, lvl, 10000);
+  }
+};
+{% endif %}
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

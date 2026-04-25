@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Инциденты — PumpJack Monitor{% endblock %}
+{% block page_title %}Инциденты{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body py-2 px-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <input type="text" name="q" value="{{ filter_q }}" class="form-control form-control-sm" placeholder="Поиск..." style="width:200px">
+      </div>
+      <div class="col-auto">
+        <select name="severity" class="form-select form-select-sm">
+          <option value="">Все severity</option>
+          {% for val,label in severities %}<option value="{{ val }}" {% if filter_severity == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">Все статусы</option>
+          {% for val,label in statuses %}<option value="{{ val }}" {% if filter_status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="type" class="form-select form-select-sm">
+          <option value="">Все типы</option>
+          {% for val,label in types %}<option value="{{ val }}" {% if filter_type == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-funnel me-1"></i>Фильтр</button>
+        <a href="{% url 'incident-list' %}" class="btn btn-sm btn-link text-muted">Сброс</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th class="ps-3">Severity</th>
+            <th>Тип</th>
+            <th>Устройство</th>
+            <th>Заголовок</th>
+            <th>Статус</th>
+            <th>Назначен</th>
+            <th>Создан</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for inc in incidents %}
+          <tr {% if inc.severity == 'critical' %}style="background:rgba(248,81,73,.05)"{% elif inc.severity == 'warning' %}style="background:rgba(255,193,7,.03)"{% endif %}>
+            <td class="ps-3">
+              <span class="sev-{{ inc.severity }}" style="font-size:.8rem">
+                {% if inc.severity == 'critical' %}<i class="bi bi-exclamation-circle-fill"></i>
+                {% elif inc.severity == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>
+                {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+                {{ inc.get_severity_display }}
+              </span>
+            </td>
+            <td style="font-size:.78rem; color:#8b949e">{{ inc.get_incident_type_display }}</td>
+            <td>
+              <a href="{% url 'device-detail' inc.device.id %}" class="text-info text-decoration-none" style="font-size:.82rem; font-family:monospace">
+                {{ inc.device.serial_number }}
+              </a>
+            </td>
+            <td style="font-size:.82rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+              <a href="{% url 'incident-detail' inc.id %}" class="text-light text-decoration-none">{{ inc.title }}</a>
+            </td>
+            <td>
+              <span class="badge badge-{{ inc.status }}" style="font-size:.7rem">{{ inc.get_status_display }}</span>
+            </td>
+            <td style="font-size:.78rem; color:#8b949e">
+              {{ inc.assigned_to.username|default:"—" }}
+            </td>
+            <td style="font-size:.75rem; color:#8b949e; white-space:nowrap">
+              {{ inc.created_at|date:"d.m.Y H:i" }}
+            </td>
+            <td>
+              <a href="{% url 'incident-detail' inc.id %}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.75rem">
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-4">Инцидентов не найдено</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

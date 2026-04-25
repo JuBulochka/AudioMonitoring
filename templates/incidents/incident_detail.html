@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block title %}{{ incident.title }} — PumpJack Monitor{% endblock %}
+{% block page_title %}
+  <span class="sev-{{ incident.severity }}">
+    {% if incident.severity == 'critical' %}<i class="bi bi-exclamation-circle-fill me-1"></i>
+    {% elif incident.severity == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-1"></i>
+    {% else %}<i class="bi bi-info-circle-fill me-1"></i>{% endif %}
+  </span>
+  {{ incident.title|truncatechars:60 }}
+{% endblock %}
+
+{% block topbar_actions %}
+<span class="badge badge-{{ incident.status }} me-2">{{ incident.get_status_display }}</span>
+<button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#statusModal">
+  <i class="bi bi-pencil me-1"></i>Изменить статус
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Main -->
+  <div class="col-12 col-xl-8">
+    <!-- Meta -->
+    <div class="card mb-3">
+      <div class="card-body py-3">
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div style="font-size:.72rem; color:#8b949e">Устройство</div>
+            <a href="{% url 'device-detail' incident.device.id %}" class="text-info text-decoration-none" style="font-family:monospace; font-size:.88rem">
+              {{ incident.device.serial_number }}
+            </a>
+          </div>
+          <div class="col-6 col-md-3">
+            <div style="font-size:.72rem; color:#8b949e">Тип инцидента</div>
+            <div style="font-size:.85rem; color:#dee2e6">{{ incident.get_incident_type_display }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div style="font-size:.72rem; color:#8b949e">Назначен</div>
+            <div style="font-size:.85rem; color:#dee2e6">{{ incident.assigned_to.get_full_name|default:incident.assigned_to.username|default:"—" }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div style="font-size:.72rem; color:#8b949e">Создан</div>
+            <div style="font-size:.85rem; color:#dee2e6">{{ incident.created_at|date:"d.m.Y H:i" }}</div>
+          </div>
+        </div>
+
+        {% if incident.description %}
+        <hr style="border-color:#30363d; margin:1rem 0 .75rem">
+        <div style="font-size:.85rem; color:#dee2e6; line-height:1.6">{{ incident.description }}</div>
+        {% endif %}
+
+        {% if incident.trigger_class %}
+        <div class="mt-2 d-flex align-items-center gap-2" style="font-size:.8rem">
+          <span style="color:#8b949e">Триггер:</span>
+          <span class="sev-{{ incident.severity }}">{{ incident.trigger_class }}</span>
+          {% if incident.trigger_score %}
+          <div class="progress" style="height:5px; width:80px; background:#21262d">
+            <div class="progress-bar bg-warning" style="width:{{ incident.trigger_score|floatformat:2 }}00%"></div>
+          </div>
+          <span style="color:#8b949e">{{ incident.trigger_score|floatformat:3 }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Triggering packet audio -->
+    {% if incident.trigger_packet and incident.trigger_packet.audio_file %}
+    <div class="card mb-3">
+      <div class="card-header py-2">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-music-note me-2"></i>Аудиозапись-триггер</span>
+        <span style="font-size:.72rem; color:#8b949e; float:right">{{ incident.trigger_packet.recorded_at|date:"d.m.Y H:i" }}</span>
+      </div>
+      <div class="card-body py-3">
+        <audio controls class="w-100" preload="none">
+          <source src="{{ incident.trigger_packet.audio_file.url }}" type="audio/wav">
+          Ваш браузер не поддерживает аудио.
+        </audio>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Timeline / comments -->
+    <div class="card">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-chat-left-text me-2"></i>Комментарии и история</span>
+      </div>
+      <div class="card-body p-0">
+        {% for comment in comments %}
+        <div class="d-flex gap-3 px-3 py-3 border-bottom" style="border-color:#21262d!important">
+          <div style="width:32px; height:32px; border-radius:50%; background:#21262d; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.75rem; color:#8b949e; font-weight:600">
+            {% if comment.is_system %}<i class="bi bi-robot"></i>{% else %}{{ comment.author.username|first|upper }}{% endif %}
+          </div>
+          <div style="flex:1; min-width:0">
+            <div style="font-size:.78rem; color:#8b949e; margin-bottom:3px">
+              {% if comment.is_system %}<span style="color:#484f58">Система</span>
+              {% else %}{{ comment.author.get_full_name|default:comment.author.username }}{% endif %}
+              · {{ comment.created_at|date:"d.m.Y H:i" }}
+            </div>
+            <div style="font-size:.85rem; color:{% if comment.is_system %}#8b949e{% else %}#dee2e6{% endif %}; line-height:1.5">
+              {{ comment.text }}
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-center text-muted py-3" style="font-size:.85rem">Комментариев нет</div>
+        {% endfor %}
+
+        <!-- Add comment form -->
+        <div class="px-3 py-3">
+          <textarea id="commentText" class="form-control form-control-sm" rows="2" placeholder="Добавить комментарий..."></textarea>
+          <div class="mt-2 d-flex gap-2">
+            <button class="btn btn-sm btn-success" onclick="addComment()">
+              <i class="bi bi-send me-1"></i>Отправить
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right sidebar -->
+  <div class="col-12 col-xl-4">
+    <!-- Maintenance tasks -->
+    <div class="card mb-3">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-tools me-2"></i>Задачи обслуживания</span>
+        <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:.72rem" data-bs-toggle="modal" data-bs-target="#taskModal">+ Добавить</button>
+      </div>
+      <div class="card-body p-0">
+        {% for task in tasks %}
+        <div class="px-3 py-2 border-bottom" style="border-color:#21262d!important">
+          <div class="d-flex justify-content-between">
+            <span style="font-size:.82rem; color:#dee2e6">{{ task.title }}</span>
+            <span class="badge bg-secondary" style="font-size:.65rem">{{ task.get_status_display }}</span>
+          </div>
+          <div style="font-size:.72rem; color:#8b949e">
+            {{ task.get_priority_display }}
+            {% if task.assigned_to %} · {{ task.assigned_to.username }}{% endif %}
+            {% if task.scheduled_date %} · {{ task.scheduled_date|date:"d.m.Y" }}{% endif %}
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-center text-muted py-2" style="font-size:.82rem">Задач нет</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Resolution -->
+    {% if incident.resolved_at %}
+    <div class="card mb-3" style="border-color:#238636">
+      <div class="card-header py-2" style="background:#0d2b1a">
+        <span style="font-size:.85rem; font-weight:600; color:#3fb950"><i class="bi bi-check-circle me-2"></i>Устранено</span>
+      </div>
+      <div class="card-body py-2 px-3">
+        <div style="font-size:.78rem; color:#8b949e">{{ incident.resolved_at|date:"d.m.Y H:i" }}</div>
+        {% if incident.resolved_by %}<div style="font-size:.78rem">{{ incident.resolved_by.get_full_name|default:incident.resolved_by.username }}</div>{% endif %}
+        {% if incident.resolution_notes %}<div style="font-size:.82rem; color:#dee2e6; margin-top:.4rem">{{ incident.resolution_notes }}</div>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick actions -->
+    <div class="card">
+      <div class="card-header py-2">
+        <span style="font-size:.85rem; font-weight:600">Быстрые действия</span>
+      </div>
+      <div class="card-body d-flex flex-column gap-2 py-2">
+        <button class="btn btn-sm btn-outline-success" onclick="setStatus('resolved')">
+          <i class="bi bi-check-circle me-1"></i>Устранить
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="setStatus('false_positive')">
+          <i class="bi bi-x-circle me-1"></i>Ложное срабатывание
+        </button>
+        <button class="btn btn-sm btn-outline-primary" onclick="setStatus('in_progress')">
+          <i class="bi bi-arrow-repeat me-1"></i>Взять в работу
+        </button>
+        <a href="{% url 'device-detail' incident.device.id %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-cpu me-1"></i>Перейти к устройству
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title">Изменить статус инцидента</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <div class="mb-2">
+          <label class="form-label" style="font-size:.8rem">Новый статус</label>
+          <select id="newStatus" class="form-select form-select-sm">
+            {% for val,label in statuses %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label" style="font-size:.8rem">Комментарий</label>
+          <textarea id="statusComment" class="form-control form-control-sm" rows="2" placeholder="Необязательно"></textarea>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:.8rem">Заметки о решении</label>
+          <textarea id="resolutionNotes" class="form-control form-control-sm" rows="2" placeholder="Что было сделано..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button class="btn btn-sm btn-success" onclick="submitStatus()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Task modal -->
+<div class="modal fade" id="taskModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title">Добавить задачу обслуживания</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <input type="text" id="taskTitle" class="form-control form-control-sm mb-2" placeholder="Название задачи">
+        <textarea id="taskDesc" class="form-control form-control-sm mb-2" rows="2" placeholder="Описание"></textarea>
+        <select id="taskPriority" class="form-select form-select-sm">
+          <option value="low">Низкий</option>
+          <option value="medium" selected>Средний</option>
+          <option value="high">Высокий</option>
+          <option value="urgent">Срочный</option>
+        </select>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button class="btn btn-sm btn-success" onclick="addTask()">Создать</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const INCIDENT_ID = '{{ incident.id }}';
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? v.pop() : '';
+}
+
+function addComment() {
+  const text = document.getElementById('commentText').value.trim();
+  if (!text) return;
+  fetch(`/api/v1/incidents/${INCIDENT_ID}/comments/`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({text})
+  }).then(() => location.reload());
+}
+
+function setStatus(status) {
+  fetch(`/api/v1/incidents/${INCIDENT_ID}/status/`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({status})
+  }).then(() => location.reload());
+}
+
+function submitStatus() {
+  const status = document.getElementById('newStatus').value;
+  const comment = document.getElementById('statusComment').value;
+  const resolution_notes = document.getElementById('resolutionNotes').value;
+  fetch(`/api/v1/incidents/${INCIDENT_ID}/status/`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({status, comment, resolution_notes})
+  }).then(() => location.reload());
+}
+
+function addTask() {
+  const title = document.getElementById('taskTitle').value.trim();
+  if (!title) { alert('Введите название задачи'); return; }
+  const priority = document.getElementById('taskPriority').value;
+  const description = document.getElementById('taskDesc').value.trim();
+  fetch(`/api/v1/incidents/${INCIDENT_ID}/tasks/`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({title, priority, description})
+  }).then(r => {
+    if (r.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+      location.reload();
+    } else {
+      r.json().then(d => alert('Ошибка: ' + JSON.stringify(d)));
+    }
+  });
+}
+</script>
+{% endblock %}

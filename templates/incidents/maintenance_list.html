@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% block title %}Обслуживание — PumpJack Monitor{% endblock %}
+{% block page_title %}Задачи обслуживания{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-sm btn-success" onclick="showCreateModal()">
+  <i class="bi bi-plus-lg me-1"></i>Создать задачу
+</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Счётчики ─────────────────────────────────────────────────────────── -->
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="label">Запланировано</div>
+      <div class="value" style="color:#e3b341">{{ counts.planned }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="label">В работе</div>
+      <div class="value" style="color:#58a6ff">{{ counts.in_progress }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="label">Выполнено</div>
+      <div class="value" style="color:#3fb950">{{ counts.done }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="label">Всего</div>
+      <div class="value">{{ tasks|length }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Фильтры ──────────────────────────────────────────────────────────── -->
+<div class="card mb-3">
+  <div class="card-body py-2 px-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm" style="min-width:140px">
+          <option value="">Все статусы</option>
+          {% for val,label in statuses %}
+            <option value="{{ val }}" {% if filter_status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="device" class="form-select form-select-sm" style="min-width:180px">
+          <option value="">Все устройства</option>
+          {% for d in devices %}
+            <option value="{{ d.id }}" {% if filter_device == d.id|stringformat:"s" %}selected{% endif %}>
+              {{ d.serial_number }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-funnel me-1"></i>Фильтр
+        </button>
+        <a href="{% url 'maintenance-list' %}" class="btn btn-sm btn-link text-muted">Сброс</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Таблица задач ────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th class="ps-3" style="width:80px">Приоритет</th>
+            <th style="width:110px">Устройство</th>
+            <th>Задача</th>
+            <th style="width:120px">Статус</th>
+            <th style="width:110px">Назначен</th>
+            <th style="width:90px">Дата</th>
+            <th style="width:80px">Создана</th>
+            <th style="width:100px"></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for task in tasks %}
+          <tr id="task-row-{{ task.id }}">
+            <td class="ps-3">
+              <span class="badge
+                {% if task.priority == 'urgent' %}bg-danger
+                {% elif task.priority == 'high' %}bg-warning text-dark
+                {% elif task.priority == 'medium' %}bg-info text-dark
+                {% else %}bg-secondary{% endif %}"
+                style="font-size:.66rem">
+                {{ task.get_priority_display }}
+              </span>
+            </td>
+            <td>
+              <a href="{% url 'device-detail' task.device.id %}"
+                 class="text-info text-decoration-none"
+                 style="font-family:monospace; font-size:.8rem">
+                {{ task.device.serial_number }}
+              </a>
+            </td>
+            <td>
+              <div style="font-size:.82rem; color:#dee2e6; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+                {{ task.title }}
+              </div>
+              {% if task.description %}
+              <div style="font-size:.7rem; color:#8b949e; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+                {{ task.description }}
+              </div>
+              {% endif %}
+              {% if task.incident %}
+              <a href="{% url 'incident-detail' task.incident.id %}"
+                 style="font-size:.68rem; color:#8b949e">
+                <i class="bi bi-link-45deg"></i>{{ task.incident.title|truncatechars:30 }}
+              </a>
+              {% endif %}
+            </td>
+            <td>
+              <select class="form-select form-select-sm"
+                      style="font-size:.72rem; padding:2px 6px; background:#21262d; border-color:#30363d; color:#c9d1d9; width:auto"
+                      onchange="changeStatus('{{ task.id }}', this.value, this)">
+                {% for val,label in statuses %}
+                  <option value="{{ val }}" {% if task.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td style="font-size:.78rem; color:#8b949e">
+              {{ task.assigned_to.username|default:"—" }}
+            </td>
+            <td style="font-size:.74rem; color:#8b949e; white-space:nowrap">
+              {% if task.scheduled_date %}{{ task.scheduled_date|date:"d.m.Y" }}{% else %}—{% endif %}
+            </td>
+            <td style="font-size:.72rem; color:#8b949e; white-space:nowrap">
+              {{ task.created_at|date:"d.m.Y" }}
+            </td>
+            <td class="text-end pe-3">
+              {% if task.status != 'done' and task.status != 'cancelled' %}
+              <button class="btn btn-sm py-0 px-2"
+                      style="font-size:.7rem; border:1px solid #238636; color:#3fb950"
+                      onclick="markDone('{{ task.id }}')"
+                      title="Отметить выполненным">
+                <i class="bi bi-check2"></i>
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="8" class="text-center text-muted py-5" style="font-size:.85rem">
+              Задач не найдено
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Модальное окно создания ──────────────────────────────────────────── -->
+<div class="modal fade" id="createModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title"><i class="bi bi-tools me-2"></i>Новая задача обслуживания</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+
+        <div class="mb-2">
+          <label class="form-label" style="font-size:.78rem">Устройство <span class="text-danger">*</span></label>
+          <select id="c-device" class="form-select form-select-sm">
+            <option value="">— выберите устройство —</option>
+            {% for d in devices %}
+              <option value="{{ d.id }}">{{ d.serial_number }} — {{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label" style="font-size:.78rem">Название задачи <span class="text-danger">*</span></label>
+          <input type="text" id="c-title" class="form-control form-control-sm"
+                 placeholder="Например: замена уплотнителя, плановое ТО...">
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label" style="font-size:.78rem">Описание</label>
+          <textarea id="c-desc" class="form-control form-control-sm" rows="2"
+                    placeholder="Подробности, что нужно сделать..."></textarea>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label" style="font-size:.78rem">Приоритет</label>
+            <select id="c-priority" class="form-select form-select-sm">
+              {% for val,label in priorities %}
+                <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label" style="font-size:.78rem">Дата выполнения</label>
+            <input type="date" id="c-date" class="form-control form-control-sm">
+          </div>
+        </div>
+
+        <div id="c-error" class="alert alert-danger py-2 mt-2" style="display:none; font-size:.78rem"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button class="btn btn-sm btn-success" id="c-submit-btn" onclick="submitCreate()">
+          <i class="bi bi-check2 me-1"></i>Создать
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Модальное окно «Выполнено» ───────────────────────────────────────── -->
+<div class="modal fade" id="doneModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="background:#161b22; border:1px solid #238636">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title" style="font-size:.85rem">
+          <i class="bi bi-check-circle-fill text-success me-1"></i>Задача выполнена
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <textarea id="done-notes" class="form-control form-control-sm" rows="3"
+                  placeholder="Что сделано? (необязательно)"></textarea>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button class="btn btn-sm btn-success" onclick="submitDone()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? v.pop() : '';
+}
+
+// ── Смена статуса через select ──────────────────────────────────────────────
+function changeStatus(taskId, newStatus, selectEl) {
+  const orig = selectEl.dataset.orig || selectEl.value;
+  fetch(`/api/v1/tasks/${taskId}/status/`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({status: newStatus})
+  }).then(r => {
+    if (r.ok) {
+      // Visual feedback — briefly highlight row
+      const row = document.getElementById('task-row-' + taskId);
+      if (row) {
+        row.style.transition = 'background .3s';
+        row.style.background = '#0d2b1a';
+        setTimeout(() => { row.style.background = ''; }, 800);
+      }
+      selectEl.dataset.orig = newStatus;
+    } else {
+      alert('Ошибка смены статуса');
+      selectEl.value = orig;
+    }
+  }).catch(() => { alert('Ошибка сети'); selectEl.value = orig; });
+}
+
+// ── Кнопка «Выполнено» ─────────────────────────────────────────────────────
+let _doneTaskId = null;
+
+function markDone(taskId) {
+  _doneTaskId = taskId;
+  document.getElementById('done-notes').value = '';
+  new bootstrap.Modal(document.getElementById('doneModal')).show();
+}
+
+function submitDone() {
+  const notes = document.getElementById('done-notes').value.trim();
+  fetch(`/api/v1/tasks/${_doneTaskId}/status/`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({status:'done', result_notes: notes})
+  }).then(r => {
+    if (r.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('doneModal')).hide();
+      location.reload();
+    }
+  });
+}
+
+// ── Создать задачу ─────────────────────────────────────────────────────────
+function showCreateModal() {
+  document.getElementById('c-error').style.display = 'none';
+  new bootstrap.Modal(document.getElementById('createModal')).show();
+}
+
+function submitCreate() {
+  const deviceId = document.getElementById('c-device').value;
+  const title    = document.getElementById('c-title').value.trim();
+  const desc     = document.getElementById('c-desc').value.trim();
+  const priority = document.getElementById('c-priority').value;
+  const date     = document.getElementById('c-date').value;
+  const errEl    = document.getElementById('c-error');
+
+  if (!deviceId) { showErr('Выберите устройство'); return; }
+  if (!title)    { showErr('Введите название задачи'); return; }
+
+  const btn = document.getElementById('c-submit-btn');
+  btn.disabled = true;
+
+  const payload = {device_id: deviceId, title, description: desc, priority};
+  if (date) payload.scheduled_date = date + 'T00:00:00';
+
+  fetch('/api/v1/tasks/', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify(payload)
+  }).then(r => {
+    btn.disabled = false;
+    if (r.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+      location.reload();
+    } else {
+      r.json().then(d => showErr(JSON.stringify(d)));
+    }
+  }).catch(() => { btn.disabled = false; showErr('Ошибка сети'); });
+}
+
+function showErr(msg) {
+  const el = document.getElementById('c-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+{% endblock %}

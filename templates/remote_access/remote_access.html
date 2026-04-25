@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}Удалённый доступ — PumpJack Monitor{% endblock %}
+{% block page_title %}Удалённый доступ{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Link accent adapts to theme */
+  .link-accent { color: #0550ae; text-decoration: none; }
+  html[data-theme="dark"] .link-accent { color: #58a6ff; }
+  .link-accent:hover { text-decoration: underline; }
+
+  /* "Commands" / "Desktop" secondary button */
+  .btn-ghost {
+    background: var(--bg-card-header);
+    border-color: var(--border-clr);
+    color: var(--txt-primary);
+    font-size: .75rem;
+    padding: 4px 12px;
+  }
+  .btn-ghost:hover {
+    background: var(--bg-hover);
+    border-color: var(--txt-muted);
+    color: var(--txt-primary);
+  }
+
+  /* VNC button – online vs offline */
+  .btn-vnc-online {
+    background: rgba(9,105,218,.08);
+    border-color: #0969da;
+    color: #0969da;
+    font-size: .75rem;
+    padding: 4px 12px;
+  }
+  html[data-theme="dark"] .btn-vnc-online {
+    background: rgba(31,111,235,.12);
+    border-color: #1f6feb;
+    color: #58a6ff;
+  }
+  .btn-vnc-online:hover {
+    background: rgba(9,105,218,.15);
+    color: #0969da;
+    border-color: #0969da;
+  }
+  html[data-theme="dark"] .btn-vnc-online:hover {
+    background: rgba(31,111,235,.2);
+    color: #58a6ff;
+    border-color: #1f6feb;
+  }
+
+  /* Tunnel port badge */
+  .badge-port {
+    background: var(--bg-card-header);
+    border: 1px solid var(--border-clr);
+    font-family: monospace;
+    font-size: .7rem;
+  }
+
+  /* Device card online border accent */
+  .card-online  { border-color: #238636 !important; }
+  .card-offline { border-color: var(--border-clr) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Header hint ─────────────────────────────────────────────────────────── -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <p class="mb-0" style="font-size:.78rem; color:var(--txt-muted)">
+    Нажмите <strong style="color:var(--txt-primary)">Подключить</strong> — SSH-терминал откроется в новой вкладке прямо в браузере.
+    Устройство должно быть онлайн и иметь активный reverse-туннель.
+  </p>
+  <span class="badge badge-port ms-3 flex-shrink-0" style="color:var(--txt-muted)">
+    {{ device_rows|length }} устройств
+  </span>
+</div>
+
+<!-- ── Device cards ────────────────────────────────────────────────────────── -->
+<div class="row g-2 mb-4">
+{% for row in device_rows %}
+{% with device=row.device last_ses=row.last_ses %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="card h-100 {% if device.is_online %}card-online{% else %}card-offline{% endif %}"
+         style="transition: border-color .2s">
+      <div class="card-body p-3">
+
+        <!-- ── Title row ── -->
+        <div class="d-flex align-items-start justify-content-between mb-1">
+          <div class="d-flex align-items-center gap-2">
+            {% if device.is_online %}
+              <span style="width:8px;height:8px;border-radius:50%;background:#3fb950;
+                           box-shadow:0 0 6px #3fb95066;flex-shrink:0"></span>
+            {% else %}
+              <span style="width:8px;height:8px;border-radius:50%;
+                           background:var(--txt-dim);flex-shrink:0"></span>
+            {% endif %}
+            <a href="{% url 'device-detail' device.id %}"
+               class="link-accent"
+               style="font-family:monospace;font-size:.85rem;font-weight:600">
+              {{ device.serial_number }}
+            </a>
+          </div>
+          <!-- Tunnel port -->
+          {% if device.tunnel_port %}
+          <span class="badge badge-port"
+                style="color:{% if device.is_online %}#3fb950{% else %}var(--txt-muted){% endif %}">
+            :{{ device.tunnel_port }}
+          </span>
+          {% else %}
+          <span class="badge badge-port"
+                style="color:#cf222e;border-color:#cf222e44"
+                title="Пересохраните устройство в Admin — порт назначится автоматически">
+            нет порта
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- ── Device name ── -->
+        <div style="font-size:.75rem;color:var(--txt-primary);margin-left:16px;margin-bottom:3px">
+          {{ device.name }}
+        </div>
+
+        <!-- ── Location ── -->
+        <div style="font-size:.7rem;color:var(--txt-muted);margin-left:16px;margin-bottom:10px">
+          <i class="bi bi-geo-alt" style="font-size:.65rem"></i>
+          {{ device.pump_jack.site.field.region.name }} /
+          {{ device.pump_jack.site.field.name }} /
+          {{ device.pump_jack.site.name }}
+        </div>
+
+        <!-- ── Last session badge ── -->
+        {% if last_ses %}
+        <div style="font-size:.7rem;color:var(--txt-muted);margin-left:16px;margin-bottom:8px">
+          <i class="bi bi-clock-history me-1"></i>Последняя сессия:
+          <span class="badge ms-1
+            {% if last_ses.status == 'active' %}bg-success
+            {% elif last_ses.status == 'completed' %}bg-secondary
+            {% elif last_ses.status == 'expired' %}bg-dark border
+            {% else %}bg-secondary{% endif %}"
+            style="font-size:.6rem">{{ last_ses.get_status_display }}</span>
+          <span class="ms-1">{{ last_ses.created_at|date:"d.m H:i" }}</span>
+          — {{ last_ses.operator.username }}
+        </div>
+        {% endif %}
+
+        <!-- ── Buttons row ── -->
+        <div class="d-flex align-items-center gap-2 flex-wrap" style="margin-left:16px">
+          {% if device.tunnel_port %}
+            <a href="{% url 'remote-terminal' device.id %}"
+               target="_blank"
+               class="btn btn-sm {% if device.is_online %}btn-success{% else %}btn-outline-secondary{% endif %}"
+               style="font-size:.75rem;padding:4px 12px">
+              <i class="bi bi-terminal-fill me-1"></i>
+              {% if device.is_online %}Подключить{% else %}Попробовать{% endif %}
+            </a>
+          {% else %}
+            <button class="btn btn-sm btn-outline-secondary"
+                    style="font-size:.75rem;padding:4px 12px"
+                    disabled>
+              <i class="bi bi-terminal me-1"></i>Нет туннеля
+            </button>
+          {% endif %}
+
+          <!-- Commands button -->
+          <a href="{% url 'remote-commands' device.id %}"
+             class="btn btn-sm btn-ghost">
+            <i class="bi bi-send me-1"></i>Команды
+          </a>
+
+          <!-- VNC Remote Desktop button -->
+          <a href="{% url 'remote-vnc' device.id %}"
+             target="_blank"
+             class="btn btn-sm {% if device.is_online %}btn-vnc-online{% else %}btn-ghost{% endif %}"
+             title="Удалённый рабочий стол (VNC)">
+            <i class="bi bi-display me-1"></i>Рабочий стол
+          </a>
+
+          {% if device.is_online %}
+            <span style="font-size:.68rem;color:#3fb950">
+              <i class="bi bi-wifi me-1"></i>онлайн
+            </span>
+          {% else %}
+            <span style="font-size:.68rem;color:var(--txt-muted)">
+              <i class="bi bi-wifi-off me-1"></i>офлайн
+              {% if device.last_seen_at %}· {{ device.last_seen_at|timesince }} назад{% endif %}
+            </span>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+{% endwith %}
+{% empty %}
+  <div class="col-12 text-center text-muted py-5">
+    <i class="bi bi-hdd-network" style="font-size:2rem"></i>
+    <div class="mt-2">Нет активных устройств</div>
+  </div>
+{% endfor %}
+</div>
+
+<!-- ── Session audit log ──────────────────────────────────────────────────── -->
+<div class="mb-2">
+  <span style="font-size:.82rem;color:var(--txt-primary);font-weight:600">
+    <i class="bi bi-journal-text me-1" style="color:var(--txt-muted)"></i>Журнал сессий
+  </span>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th class="ps-3" style="width:95px">Статус</th>
+            <th>Устройство</th>
+            <th>Оператор</th>
+            <th>Туннель</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th style="width:65px">Длит.</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for ses in sessions %}
+          <tr>
+            <td class="ps-3">
+              <span class="badge
+                {% if ses.status == 'active' %}bg-success
+                {% elif ses.status == 'approved' %}bg-info text-dark
+                {% elif ses.status == 'completed' %}bg-secondary
+                {% elif ses.status == 'expired' %}bg-dark border
+                {% else %}bg-secondary{% endif %}"
+                style="font-size:.64rem">{{ ses.get_status_display }}</span>
+            </td>
+            <td>
+              <a href="{% url 'device-detail' ses.device.id %}"
+                 class="link-accent"
+                 style="font-family:monospace;font-size:.8rem">
+                {{ ses.device.serial_number }}
+              </a>
+            </td>
+            <td style="font-size:.8rem;color:var(--txt-primary)">{{ ses.operator.username }}</td>
+            <td style="font-size:.74rem;font-family:monospace;color:var(--txt-muted)">
+              {% if ses.tunnel_host %}{{ ses.tunnel_host }}:{{ ses.tunnel_port }}{% else %}—{% endif %}
+            </td>
+            <td style="font-size:.72rem;color:var(--txt-muted);white-space:nowrap">
+              {% if ses.started_at %}{{ ses.started_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+            </td>
+            <td style="font-size:.72rem;color:var(--txt-muted);white-space:nowrap">
+              {% if ses.ended_at %}{{ ses.ended_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+            </td>
+            <td style="font-size:.72rem;color:var(--txt-muted)">
+              {% if ses.duration_seconds %}{{ ses.duration_seconds }}с{% else %}—{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4" style="font-size:.8rem">
+              Сессий ещё не было
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

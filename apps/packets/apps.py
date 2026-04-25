@@ -1,0 +1,12 @@
+from django.apps import AppConfig
+
+class PacketsConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.packets"
+    verbose_name = "Packets"
+
+    def ready(self):
+        try:
+            import apps.packets.signals  # noqa: F401
+        except ImportError:
+            pass

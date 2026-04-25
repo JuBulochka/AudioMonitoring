@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Устройства — PumpJack Monitor{% endblock %}
+{% block page_title %}Устройства{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'device-map' %}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-map me-1"></i>Карта
+</a>
+<a href="{% url 'device-create' %}" class="btn btn-sm btn-primary">
+  <i class="bi bi-plus-circle me-1"></i>Добавить устройство
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body py-2 px-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <input type="text" name="q" value="{{ filter_q }}" class="form-control form-control-sm" placeholder="Поиск по имени, серийному номеру..." style="width:220px">
+      </div>
+      <div class="col-auto">
+        <select name="region" class="form-select form-select-sm">
+          <option value="">Все регионы</option>
+          {% for r in regions %}<option value="{{ r.id }}" {% if filter_region == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">Все статусы</option>
+          {% for val,label in device_statuses %}<option value="{{ val }}" {% if filter_status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="online" class="form-select form-select-sm">
+          <option value="">Связь: все</option>
+          <option value="1" {% if filter_online == "1" %}selected{% endif %}>Онлайн</option>
+          <option value="0" {% if filter_online == "0" %}selected{% endif %}>Оффлайн</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-funnel me-1"></i>Фильтр</button>
+        <a href="{% url 'device-list' %}" class="btn btn-sm btn-link text-muted">Сброс</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="card-header py-2 d-flex align-items-center justify-content-between">
+    <span style="font-size:.85rem; color:#8b949e">Найдено: {{ devices|length }}</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th class="ps-3" style="width:12px"></th>
+            <th>Серийный номер</th>
+            <th>Имя</th>
+            <th>Регион / Куст</th>
+            <th>Скважина</th>
+            <th>Статус</th>
+            <th>Прошивка</th>
+            <th>Последний пакет</th>
+            <th>Последний HB</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for dev in devices %}
+          <tr>
+            <td class="ps-3">
+              {% if dev.is_online %}
+                <span class="online-dot" title="Онлайн"></span>
+              {% else %}
+                <span class="offline-dot" title="Оффлайн"></span>
+              {% endif %}
+            </td>
+            <td style="font-family:monospace; font-size:.82rem">
+              <a href="{% url 'device-detail' dev.id %}" class="text-info text-decoration-none">{{ dev.serial_number }}</a>
+            </td>
+            <td style="font-size:.85rem">{{ dev.name }}</td>
+            <td style="font-size:.78rem; color:#8b949e">{{ dev.pump_jack.site.field.region.name }} / {{ dev.pump_jack.site.name }}</td>
+            <td style="font-size:.82rem">{{ dev.pump_jack.well_number }}</td>
+            <td>
+              <span class="badge badge-{{ dev.status }}" style="font-size:.7rem">{{ dev.get_status_display }}</span>
+            </td>
+            <td style="font-size:.75rem; color:#8b949e">{{ dev.firmware_version|default:"—" }}</td>
+            <td style="font-size:.75rem; color:#8b949e">
+              {% if dev.last_packet_at %}{{ dev.last_packet_at|timesince }} назад{% else %}—{% endif %}
+            </td>
+            <td style="font-size:.75rem; color:#8b949e">
+              {% if dev.last_heartbeat_at %}{{ dev.last_heartbeat_at|timesince }} назад{% else %}—{% endif %}
+            </td>
+            <td>
+              <a href="{% url 'device-detail' dev.id %}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.75rem">
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="10" class="text-center text-muted py-4">Устройства не найдены</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

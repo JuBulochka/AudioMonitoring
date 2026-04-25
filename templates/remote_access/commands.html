@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+{% block title %}Команды — {{ device.serial_number }}{% endblock %}
+{% block page_title %}Команды устройства{% endblock %}
+
+{% block content %}
+
+{% with d=device %}
+<!-- ── Device header ──────────────────────────────────────────────────────── -->
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-3">
+    {% if d.is_online %}
+      <span style="width:10px;height:10px;border-radius:50%;background:#3fb950;
+                   box-shadow:0 0 8px #3fb95080;flex-shrink:0"></span>
+    {% else %}
+      <span style="width:10px;height:10px;border-radius:50%;background:#484f58;flex-shrink:0"></span>
+    {% endif %}
+    <div>
+      <span style="font-family:monospace;font-size:1.1rem;color:#58a6ff;font-weight:700">
+        {{ d.serial_number }}
+      </span>
+      <span class="ms-2" style="color:#8b949e;font-size:.85rem">{{ d.name }}</span>
+    </div>
+    {% if not d.is_online %}
+      <span class="badge" style="background:#3d1f1f;color:#f85149;border:1px solid #6e2b2b;font-size:.7rem">
+        Офлайн — команды поставятся в очередь
+      </span>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'remote-terminal' d.id %}"
+       class="btn btn-sm"
+       style="background:#21262d;border-color:#30363d;color:#c9d1d9;font-size:.78rem">
+      <i class="bi bi-terminal me-1"></i>SSH Терминал
+    </a>
+    <a href="{% url 'remote-access-log' %}"
+       class="btn btn-sm"
+       style="background:#21262d;border-color:#30363d;color:#c9d1d9;font-size:.78rem">
+      <i class="bi bi-arrow-left me-1"></i>Назад
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       LEFT COLUMN — command catalog
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="col-12 col-xl-5">
+
+    <!-- Info category -->
+    {% for category, cmds in categories.items %}
+    <div class="mb-3">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        {% if category == "info" %}
+          <i class="bi bi-cpu" style="color:#58a6ff"></i>
+          <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;font-weight:600">Информация</span>
+        {% elif category == "audio" %}
+          <i class="bi bi-mic" style="color:#3fb950"></i>
+          <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;font-weight:600">Аудио</span>
+        {% elif category == "network" %}
+          <i class="bi bi-wifi" style="color:#58a6ff"></i>
+          <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;font-weight:600">Сеть</span>
+        {% elif category == "service" %}
+          <i class="bi bi-gear" style="color:#d29922"></i>
+          <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;font-weight:600">Сервис</span>
+        {% else %}
+          <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;font-weight:600">{{ category }}</span>
+        {% endif %}
+      </div>
+
+      {% for cmd in cmds %}
+      <div class="card mb-2" style="background:#161b22;border-color:#30363d">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-start justify-content-between">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi {{ cmd.icon }} mt-1" style="color:#8b949e;font-size:.95rem;flex-shrink:0"></i>
+              <div>
+                <div style="font-size:.88rem;color:#e6edf3;font-weight:600">{{ cmd.label }}</div>
+                <div style="font-size:.75rem;color:#8b949e;margin-top:2px">{{ cmd.description }}</div>
+                <div class="d-flex gap-2 mt-1">
+                  <span style="font-size:.68rem;color:#484f58">
+                    <i class="bi bi-clock me-1"></i>до {{ cmd.timeout }}с
+                  </span>
+                  {% if cmd.requires_confirm %}
+                  <span style="font-size:.68rem;color:#d29922">
+                    <i class="bi bi-exclamation-triangle me-1"></i>требует подтверждения
+                  </span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-sm ms-2 flex-shrink-0 send-btn"
+                    data-key="{{ cmd.key }}"
+                    data-label="{{ cmd.label }}"
+                    data-confirm="{% if cmd.requires_confirm %}1{% else %}0{% endif %}"
+                    style="background:#238636;border-color:#2ea043;color:#fff;
+                           font-size:.75rem;padding:4px 10px;white-space:nowrap">
+              <i class="bi bi-send me-1"></i>Отправить
+            </button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       RIGHT COLUMN — output panel + history
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="col-12 col-xl-7">
+
+    <!-- Output viewer -->
+    <div class="card mb-3" style="background:#161b22;border-color:#30363d">
+      <div class="card-header d-flex align-items-center justify-content-between py-2 px-3"
+           style="background:#1c2128;border-color:#30363d">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-terminal" style="color:#58a6ff"></i>
+          <span style="font-size:.82rem;color:#c9d1d9" id="outputTitle">Вывод команды</span>
+          <span id="outputBadge" class="badge ms-1" style="display:none;font-size:.65rem"></span>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          <span id="outputDuration" style="font-size:.7rem;color:#8b949e;display:none"></span>
+          <button class="btn btn-sm" id="clearOutputBtn"
+                  style="background:transparent;border-color:#30363d;color:#8b949e;
+                         font-size:.72rem;padding:2px 8px">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <!-- placeholder -->
+        <div id="outputPlaceholder" class="p-4 text-center" style="color:#484f58">
+          <i class="bi bi-terminal" style="font-size:2rem"></i>
+          <p class="mt-2 mb-0" style="font-size:.82rem">Нажмите «Отправить» для выполнения команды</p>
+          <p class="mt-1 mb-0" style="font-size:.72rem">Результат появится здесь</p>
+        </div>
+        <!-- spinner -->
+        <div id="outputSpinner" style="display:none" class="p-4 text-center">
+          <div class="spinner-border spinner-border-sm me-2" style="color:#58a6ff"></div>
+          <span style="font-size:.82rem;color:#8b949e">Выполняется на устройстве…</span>
+          <div id="spinnerLabel" style="font-size:.75rem;color:#484f58;margin-top:4px"></div>
+        </div>
+        <!-- output -->
+        <pre id="outputPre"
+             style="display:none;
+                    background:#0d1117;
+                    color:#c9d1d9;
+                    font-family:'Cascadia Code','Fira Code',monospace;
+                    font-size:.78rem;
+                    line-height:1.55;
+                    margin:0;
+                    padding:16px;
+                    max-height:420px;
+                    overflow-y:auto;
+                    border-top:1px solid #30363d;
+                    white-space:pre-wrap;
+                    word-break:break-all"></pre>
+      </div>
+    </div>
+
+    <!-- History table -->
+    <div class="card" style="background:#161b22;border-color:#30363d">
+      <div class="card-header d-flex align-items-center justify-content-between py-2 px-3"
+           style="background:#1c2128;border-color:#30363d">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-clock-history" style="color:#8b949e"></i>
+          <span style="font-size:.82rem;color:#c9d1d9">История команд</span>
+        </div>
+        <button class="btn btn-sm" id="refreshHistoryBtn"
+                style="background:transparent;border-color:#30363d;color:#8b949e;
+                       font-size:.72rem;padding:2px 8px">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div id="historyEmpty" class="p-3 text-center" style="color:#484f58;font-size:.8rem;display:none">
+          Команды ещё не отправлялись
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0" style="font-size:.78rem">
+            <thead>
+              <tr style="border-color:#30363d">
+                <th style="background:#1c2128;color:#8b949e;border-color:#30363d;font-weight:500;padding:8px 12px">Команда</th>
+                <th style="background:#1c2128;color:#8b949e;border-color:#30363d;font-weight:500;padding:8px 12px">Статус</th>
+                <th style="background:#1c2128;color:#8b949e;border-color:#30363d;font-weight:500;padding:8px 12px">Время</th>
+                <th style="background:#1c2128;color:#8b949e;border-color:#30363d;font-weight:500;padding:8px 4px"></th>
+              </tr>
+            </thead>
+            <tbody id="historyBody" style="border-color:#30363d">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endwith %}
+
+<!-- ── Confirm modal ─────────────────────────────────────────────────────── -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:#161b22;border-color:#30363d">
+      <div class="modal-header" style="border-color:#30363d;padding:12px 16px">
+        <h6 class="modal-title" style="color:#e6edf3">
+          <i class="bi bi-exclamation-triangle text-warning me-2"></i>Подтвердите действие
+        </h6>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <p style="color:#c9d1d9;font-size:.88rem;margin:0">
+          Вы собираетесь выполнить команду <strong id="confirmCmdLabel" style="color:#fff"></strong>
+          на устройстве <strong style="color:#58a6ff">{{ device.serial_number }}</strong>.
+        </p>
+        <p class="mt-2 mb-0" style="color:#8b949e;font-size:.78rem">
+          Это действие может повлиять на работу устройства.
+        </p>
+      </div>
+      <div class="modal-footer" style="border-color:#30363d;padding:10px 16px">
+        <button type="button" class="btn btn-sm"
+                style="background:#21262d;border-color:#30363d;color:#c9d1d9"
+                data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-sm" id="confirmSendBtn"
+                style="background:#da3633;border-color:#b91c1c;color:#fff">
+          <i class="bi bi-send me-1"></i>Выполнить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const DEVICE_ID  = "{{ device.id }}";
+const CSRF_TOKEN = "{{ csrf_token }}";
+
+// ── API helpers ────────────────────────────────────────────────────────────
+
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : CSRF_TOKEN;
+}
+
+async function api(method, url, body) {
+  const opts = {
+    method,
+    headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r;
+}
+
+// ── Output panel ───────────────────────────────────────────────────────────
+
+const outputPlaceholder = document.getElementById("outputPlaceholder");
+const outputSpinner     = document.getElementById("outputSpinner");
+const outputPre         = document.getElementById("outputPre");
+const outputTitle       = document.getElementById("outputTitle");
+const outputBadge       = document.getElementById("outputBadge");
+const outputDuration    = document.getElementById("outputDuration");
+const spinnerLabel      = document.getElementById("spinnerLabel");
+
+function showPlaceholder() {
+  outputPlaceholder.style.display = "";
+  outputSpinner.style.display = "none";
+  outputPre.style.display = "none";
+  outputBadge.style.display = "none";
+  outputDuration.style.display = "none";
+  outputTitle.textContent = "Вывод команды";
+}
+
+function showSpinner(label) {
+  outputPlaceholder.style.display = "none";
+  outputSpinner.style.display = "";
+  outputPre.style.display = "none";
+  spinnerLabel.textContent = label || "";
+}
+
+function showOutput(cmdLabel, status, text, durationSec) {
+  outputPlaceholder.style.display = "none";
+  outputSpinner.style.display = "none";
+  outputPre.style.display = "";
+  outputTitle.textContent = cmdLabel;
+
+  const badgeCfg = {
+    "completed": { bg: "#1b3a2d", color: "#3fb950", text: "Выполнено" },
+    "failed":    { bg: "#3d1f1f", color: "#f85149", text: "Ошибка"    },
+    "timeout":   { bg: "#3d2a1a", color: "#d29922", text: "Таймаут"   },
+    "cancelled": { bg: "#21262d", color: "#8b949e", text: "Отменено"  },
+  };
+  const cfg = badgeCfg[status] || badgeCfg["completed"];
+  outputBadge.style.cssText   = `display:inline;background:${cfg.bg};color:${cfg.color};font-size:.65rem`;
+  outputBadge.className       = "badge ms-1";
+  outputBadge.textContent     = cfg.text;
+
+  if (durationSec !== null && durationSec !== undefined) {
+    outputDuration.style.display = "";
+    outputDuration.textContent   = durationSec + "с";
+  }
+
+  // Colorise: lines starting with ===
+  outputPre.innerHTML = text
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .split("\n")
+    .map(line => {
+      if (/^===/.test(line))
+        return `<span style="color:#58a6ff;font-weight:700">${line}</span>`;
+      if (/^(error|err\b|ERROR)/i.test(line))
+        return `<span style="color:#f85149">${line}</span>`;
+      if (/^(warn|warning)/i.test(line))
+        return `<span style="color:#d29922">${line}</span>`;
+      return line;
+    })
+    .join("\n");
+
+  outputPre.scrollTop = outputPre.scrollHeight;
+}
+
+document.getElementById("clearOutputBtn").addEventListener("click", showPlaceholder);
+
+// ── Send command ───────────────────────────────────────────────────────────
+
+let pendingCommandKey   = null;
+let pendingCommandLabel = null;
+let activeCommandId     = null;
+let pollInterval        = null;
+
+document.querySelectorAll(".send-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const key     = btn.dataset.key;
+    const label   = btn.dataset.label;
+    const confirm = btn.dataset.confirm === "1";
+
+    if (confirm) {
+      pendingCommandKey   = key;
+      pendingCommandLabel = label;
+      document.getElementById("confirmCmdLabel").textContent = label;
+      new bootstrap.Modal(document.getElementById("confirmModal")).show();
+    } else {
+      sendCommand(key, label);
+    }
+  });
+});
+
+document.getElementById("confirmSendBtn").addEventListener("click", () => {
+  bootstrap.Modal.getInstance(document.getElementById("confirmModal")).hide();
+  if (pendingCommandKey) sendCommand(pendingCommandKey, pendingCommandLabel);
+});
+
+async function sendCommand(key, label) {
+  showSpinner(label);
+
+  const r = await api("POST", "/api/v1/commands/", {
+    device_id:   DEVICE_ID,
+    command_key: key,
+  });
+
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    showOutput(label, "failed",
+      "Ошибка отправки команды:\n" + (err.error || r.statusText), null);
+    return;
+  }
+
+  const data = await r.json();
+  activeCommandId = data.id;
+  spinnerLabel.textContent = label + " — ожидаем ответа от Pi…";
+
+  // Start polling for result
+  clearInterval(pollInterval);
+  pollInterval = setInterval(() => pollResult(key, label, activeCommandId), 2000);
+}
+
+async function pollResult(key, label, cmdId) {
+  const r = await api("GET", `/api/v1/commands/${cmdId}/`);
+  if (!r.ok) return;
+
+  const d = await r.json();
+  const terminal = ["completed", "failed", "timeout", "cancelled"];
+
+  if (terminal.includes(d.status)) {
+    clearInterval(pollInterval);
+    activeCommandId = null;
+
+    const text = d.output || d.error_message || "(нет вывода)";
+    showOutput(label, d.status, text, d.duration_sec);
+    loadHistory();
+  }
+}
+
+// ── History ────────────────────────────────────────────────────────────────
+
+const historyBody  = document.getElementById("historyBody");
+const historyEmpty = document.getElementById("historyEmpty");
+
+const STATUS_CFG = {
+  pending:   { color: "#8b949e", icon: "bi-hourglass",       text: "Ожидает"   },
+  running:   { color: "#58a6ff", icon: "bi-arrow-clockwise", text: "Выполняется" },
+  completed: { color: "#3fb950", icon: "bi-check-circle",    text: "Выполнено" },
+  failed:    { color: "#f85149", icon: "bi-x-circle",        text: "Ошибка"    },
+  timeout:   { color: "#d29922", icon: "bi-clock-history",   text: "Таймаут"   },
+  cancelled: { color: "#484f58", icon: "bi-dash-circle",     text: "Отменено"  },
+};
+
+async function loadHistory() {
+  const r = await fetch(`/api/v1/commands/?device=${DEVICE_ID}`);
+  if (!r.ok) return;
+  const data = await r.json();
+
+  if (!data.length) {
+    historyEmpty.style.display = "";
+    historyBody.innerHTML = "";
+    return;
+  }
+  historyEmpty.style.display = "none";
+
+  historyBody.innerHTML = data.slice(0, 30).map(cmd => {
+    const cfg  = STATUS_CFG[cmd.status] || STATUS_CFG.completed;
+    const date = new Date(cmd.created_at);
+    const ts   = date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+               + " " + date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+    const dur  = cmd.duration_sec != null ? `<span style="color:#484f58;font-size:.7rem"> ${cmd.duration_sec}с</span>` : "";
+
+    return `<tr style="border-color:#30363d">
+      <td style="color:#c9d1d9;padding:7px 12px;vertical-align:middle">
+        <i class="bi ${cmd.icon} me-1" style="color:#8b949e;font-size:.8rem"></i>
+        ${escHtml(cmd.label)}
+      </td>
+      <td style="padding:7px 12px;vertical-align:middle">
+        <span style="color:${cfg.color};font-size:.78rem">
+          <i class="bi ${cfg.icon} me-1"></i>${cfg.text}${dur}
+        </span>
+      </td>
+      <td style="color:#8b949e;padding:7px 12px;vertical-align:middle;font-size:.73rem">${ts}</td>
+      <td style="padding:7px 4px;vertical-align:middle;text-align:right">
+        ${cmd.has_output
+          ? `<button class="btn btn-sm view-output-btn"
+                     data-id="${cmd.id}"
+                     data-label="${escAttr(cmd.label)}"
+                     data-status="${cmd.status}"
+                     style="background:transparent;border-color:#30363d;color:#58a6ff;
+                            font-size:.7rem;padding:2px 7px">
+               <i class="bi bi-eye"></i>
+             </button>`
+          : ""
+        }
+        ${(cmd.status === "pending" || cmd.status === "running")
+          ? `<button class="btn btn-sm cancel-btn"
+                     data-id="${cmd.id}"
+                     style="background:transparent;border-color:#30363d;color:#f85149;
+                            font-size:.7rem;padding:2px 7px"
+                     title="Отменить">
+               <i class="bi bi-x-lg"></i>
+             </button>`
+          : ""
+        }
+      </td>
+    </tr>`;
+  }).join("");
+
+  // View output buttons
+  historyBody.querySelectorAll(".view-output-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const r = await api("GET", `/api/v1/commands/${btn.dataset.id}/`);
+      if (!r.ok) return;
+      const d = await r.json();
+      showOutput(d.label, d.status, d.output || d.error_message || "(нет вывода)", d.duration_sec);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+
+  // Cancel buttons
+  historyBody.querySelectorAll(".cancel-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await api("POST", `/api/v1/commands/${btn.dataset.id}/cancel/`);
+      loadHistory();
+    });
+  });
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function escAttr(str) {
+  return String(str).replace(/"/g,"&quot;");
+}
+
+document.getElementById("refreshHistoryBtn").addEventListener("click", loadHistory);
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadHistory();
+
+// Auto-refresh history every 10 seconds if there are running commands
+setInterval(async () => {
+  const hasRunning = historyBody.querySelector("tr [data-id]");
+  if (hasRunning || activeCommandId) loadHistory();
+}, 10000);
+</script>
+{% endblock %}

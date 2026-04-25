@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Подключение {{ device.name }} — PumpJack Monitor{% endblock %}
+{% block page_title %}Подключение устройства{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'device-detail' device.id %}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-eye me-1"></i>Карточка устройства
+</a>
+<a href="{% url 'device-list' %}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-list me-1"></i>К списку
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="alert alert-success d-flex align-items-center" role="alert">
+  <i class="bi bi-check-circle-fill me-2 fs-4"></i>
+  <div>
+    <strong>Устройство «{{ device.name }}» создано!</strong>
+    Выполните одну команду на Raspberry Pi — и устройство появится онлайн.
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="card mb-3">
+  <div class="card-header"><i class="bi bi-info-circle me-1"></i>Параметры устройства</div>
+  <div class="card-body">
+    <div class="row g-3" style="font-size:.85rem">
+      <div class="col-md-4"><span class="text-muted">Имя:</span> <strong>{{ device.name }}</strong></div>
+      <div class="col-md-4"><span class="text-muted">Серийный номер:</span> <code>{{ device.serial_number }}</code></div>
+      <div class="col-md-4"><span class="text-muted">Скважина:</span> {{ device.pump_jack.well_number }}</div>
+      <div class="col-md-4"><span class="text-muted">SSH-порт туннеля:</span> <code>{{ device.tunnel_port }}</code></div>
+      <div class="col-md-4"><span class="text-muted">VNC-порт туннеля:</span> <code>{{ device.vnc_tunnel_port }}</code></div>
+      <div class="col-md-4"><span class="text-muted">Сервер:</span> <code>{{ tunnel_host }}</code></div>
+    </div>
+  </div>
+</div>
+
+<!-- ONE COMMAND -->
+<div class="card mb-3 border-primary">
+  <div class="card-header bg-primary bg-opacity-25 d-flex align-items-center justify-content-between">
+    <span>
+      <i class="bi bi-lightning-charge me-1"></i>
+      <strong>Одна команда — полная установка</strong>
+    </span>
+    <button class="btn btn-sm btn-outline-primary" onclick="copyCmd(this)">
+      <i class="bi bi-clipboard me-1"></i>Копировать
+    </button>
+  </div>
+  <div class="card-body">
+    <p class="small text-muted mb-2">
+      Подключитесь к Raspberry Pi по SSH и выполните единственную команду:
+    </p>
+    <pre id="installCmd" style="white-space:pre-wrap;word-break:break-all"><code>curl -fsSL {{ install_url }} | bash</code></pre>
+    <div class="mt-2 small text-muted">
+      <i class="bi bi-info-circle me-1"></i>
+      Скрипт автоматически: установит зависимости, скачает ключи, создаст конфиг и запустит edge-клиент.
+    </div>
+  </div>
+</div>
+
+<!-- What it does (collapsed) -->
+<div class="card mb-3">
+  <div class="card-header">
+    <a data-bs-toggle="collapse" href="#whatHappens" class="text-decoration-none text-body">
+      <i class="bi bi-chevron-down me-1"></i>Что делает эта команда?
+    </a>
+  </div>
+  <div id="whatHappens" class="collapse">
+    <div class="card-body small">
+      <ol class="mb-0 ps-3">
+        <li>Устанавливает <code>autossh</code>, <code>python3-requests</code>, <code>curl</code></li>
+        <li>Создаёт директорию <code>~/pumpjack-edge/</code> и файл <code>.env</code> с настройками</li>
+        <li>Скачивает приватный SSH-ключ туннеля → <code>~/.ssh/pumpjack_tunnel_key</code></li>
+        <li>Добавляет публичный ключ платформы в <code>~/.ssh/authorized_keys</code> (для обратного SSH)</li>
+        <li>Регистрирует и запускает <strong>systemd-сервис</strong> <code>pumpjack-edge</code></li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- Systemd info -->
+<div class="card mb-3">
+  <div class="card-header"><i class="bi bi-gear me-1"></i>Управление сервисом</div>
+  <div class="card-body">
+    <p class="small text-muted mb-2">
+      Edge-клиент установлен как <strong>systemd-сервис</strong> — стартует при загрузке Pi, перезапускается при сбое.
+    </p>
+    <pre><code># Статус
+sudo systemctl status pumpjack-edge
+
+# Логи в реальном времени
+sudo journalctl -u pumpjack-edge -f
+
+# Перезапуск / остановка
+sudo systemctl restart pumpjack-edge
+sudo systemctl stop pumpjack-edge</code></pre>
+  </div>
+</div>
+
+<div class="text-center mt-2">
+  <a href="{% url 'device-detail' device.id %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-eye me-1"></i>Открыть карточку устройства
+  </a>
+</div>
+
+<script>
+function copyCmd(btn) {
+  const text = document.getElementById('installCmd').innerText.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Скопировано';
+    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+  });
+}
+</script>
+{% endblock %}

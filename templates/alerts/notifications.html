@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Уведомления — PumpJack Monitor{% endblock %}
+{% block page_title %}Уведомления{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-sm btn-outline-secondary" onclick="markAllRead()">
+  <i class="bi bi-check2-all me-1"></i>Прочитать все
+</button>
+<a href="?unread_only={% if unread_only %}0{% else %}1{% endif %}" class="btn btn-sm btn-outline-secondary ms-1">
+  {% if unread_only %}<i class="bi bi-eye me-1"></i>Все{% else %}<i class="bi bi-eye-slash me-1"></i>Только непрочитанные{% endif %}
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header py-2 d-flex align-items-center justify-content-between">
+    <span style="font-size:.85rem; font-weight:600">
+      <i class="bi bi-bell me-2"></i>Входящие
+    </span>
+    <span style="font-size:.75rem; color:#8b949e">Непрочитанных: {{ unread_count }}</span>
+  </div>
+  <div class="card-body p-0">
+    {% for notif in notifications %}
+    <div class="d-flex gap-3 px-3 py-3 border-bottom notification-row {% if not notif.is_read %}unread{% endif %}"
+         id="notif-{{ notif.id }}"
+         style="border-color:#21262d!important; {% if not notif.is_read %}background:rgba(88,166,255,.04);{% endif %}">
+
+      <!-- Icon -->
+      <div style="width:36px; height:36px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+           background:{% if notif.alert.severity == 'critical' %}rgba(248,81,73,.15){% elif notif.alert.severity == 'warning' %}rgba(255,193,7,.12){% else %}rgba(88,166,255,.12){% endif %}">
+        {% if notif.alert.severity == 'critical' %}
+          <i class="bi bi-exclamation-circle-fill" style="color:#f85149; font-size:1rem"></i>
+        {% elif notif.alert.severity == 'warning' %}
+          <i class="bi bi-exclamation-triangle-fill" style="color:#ffc107; font-size:1rem"></i>
+        {% else %}
+          <i class="bi bi-info-circle-fill" style="color:#58a6ff; font-size:1rem"></i>
+        {% endif %}
+      </div>
+
+      <!-- Content -->
+      <div style="flex:1; min-width:0">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div style="font-size:.88rem; color:{% if not notif.is_read %}#f0f6fc{% else %}#8b949e{% endif %}; font-weight:{% if not notif.is_read %}600{% else %}400{% endif %}">
+            {{ notif.alert.title }}
+          </div>
+          <div style="font-size:.72rem; color:#484f58; white-space:nowrap">
+            {{ notif.created_at|timesince }} назад
+          </div>
+        </div>
+        <div style="font-size:.8rem; color:#8b949e; margin-top:2px">
+          {{ notif.alert.message|truncatechars:140 }}
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-1">
+          {% if notif.alert.device %}
+          <a href="{% url 'device-detail' notif.alert.device.id %}" class="text-info text-decoration-none" style="font-size:.75rem; font-family:monospace">
+            <i class="bi bi-cpu me-1"></i>{{ notif.alert.device.serial_number }}
+          </a>
+          {% endif %}
+          <span class="badge" style="font-size:.65rem; background:{% if notif.alert.severity == 'critical' %}rgba(248,81,73,.2);color:#f85149{% elif notif.alert.severity == 'warning' %}rgba(255,193,7,.2);color:#ffc107{% else %}rgba(88,166,255,.2);color:#58a6ff{% endif %}">
+            {{ notif.alert.get_severity_display }}
+          </span>
+          <span style="font-size:.72rem; color:#484f58">{{ notif.alert.get_alert_type_display }}</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="d-flex flex-column gap-1 align-items-end">
+        {% if not notif.is_read %}
+        <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.7rem"
+                onclick="markRead('{{ notif.id }}')">
+          <i class="bi bi-check2"></i>
+        </button>
+        {% else %}
+        <span style="font-size:.65rem; color:#484f58">Прочитано</span>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-5">
+      <i class="bi bi-bell-slash" style="font-size:2.5rem; color:#30363d"></i>
+      <div class="mt-2 text-muted" style="font-size:.9rem">Нет уведомлений</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? v.pop() : '';
+}
+
+function markRead(id) {
+  fetch(`/api/v1/alerts/notifications/${id}/read/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': getCookie('csrftoken')}
+  }).then(() => {
+    const row = document.getElementById(`notif-${id}`);
+    row.style.background = '';
+    row.querySelector('button')?.remove();
+  });
+}
+
+function markAllRead() {
+  fetch('/api/v1/alerts/notifications/mark-all-read/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': getCookie('csrftoken')}
+  }).then(() => location.reload());
+}
+</script>
+{% endblock %}

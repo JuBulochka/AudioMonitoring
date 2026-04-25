@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+{% block title %}{{ device.serial_number }} — PumpJack Monitor{% endblock %}
+{% block page_title %}
+  {% if device.is_online %}<span class="online-dot me-2"></span>{% else %}<span class="offline-dot me-2"></span>{% endif %}
+  {{ device.name }}
+  <small class="text-muted ms-2" style="font-size:.75rem; font-family:monospace">{{ device.serial_number }}</small>
+{% endblock %}
+
+{% block topbar_actions %}
+<span class="badge badge-{{ device.status }} me-2">{{ device.get_status_display }}</span>
+<button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#statusModal">
+  <i class="bi bi-pencil me-1"></i>Статус
+</button>
+<a href="{% url 'remote-terminal' device.id %}"
+   target="_blank"
+   class="btn btn-sm btn-outline-success ms-1"
+   title="Открыть SSH-терминал в новой вкладке">
+  <i class="bi bi-terminal-fill me-1"></i>Терминал
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+
+  <!-- Left col: info + packets -->
+  <div class="col-12 col-xl-8">
+
+    <!-- Info cards row -->
+    <div class="row g-2 mb-3">
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="label">Регион</div>
+          <div style="font-size:.9rem; font-weight:600; color:#f0f6fc">{{ device.pump_jack.site.field.region.name }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="label">Месторождение / Куст</div>
+          <div style="font-size:.82rem; color:#dee2e6">{{ device.pump_jack.site.field.name }} / {{ device.pump_jack.site.name }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="label">Скважина</div>
+          <div style="font-size:.9rem; font-weight:600; color:#f0f6fc">№{{ device.pump_jack.well_number }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="label">Прошивка / Модель</div>
+          <div style="font-size:.8rem; color:#8b949e; font-family:monospace">
+            {{ device.firmware_version|default:"—" }} / {{ device.model_version|default:"—" }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if latest_hb %}
+    <!-- Hardware stats -->
+    <div class="card mb-3">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-activity me-2"></i>Состояние устройства</span>
+        <span style="font-size:.72rem; color:#8b949e">{{ latest_hb.received_at|timesince }} назад</span>
+      </div>
+      <div class="card-body py-2">
+        <div class="row g-2">
+          {% with cpu_pct=latest_hb.cpu_usage %}
+          <div class="col-6 col-md-3">
+            <div class="label" style="font-size:.72rem; color:#8b949e">CPU</div>
+            <div class="progress mt-1" style="height:6px; background:#21262d">
+              <div class="progress-bar {% if cpu_pct > 80 %}bg-danger{% elif cpu_pct > 60 %}bg-warning{% else %}bg-success{% endif %}"
+                   style="width:{{ cpu_pct|default:0 }}%"></div>
+            </div>
+            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{{ cpu_pct|default:"—" }}%</div>
+          </div>
+          {% endwith %}
+          <div class="col-6 col-md-3">
+            <div class="label" style="font-size:.72rem; color:#8b949e">Температура</div>
+            <div style="font-size:1.1rem; font-weight:600;
+              color:{% if latest_hb.cpu_temp > 80 %}#f85149{% elif latest_hb.cpu_temp > 65 %}#ffc107{% else %}#3fb950{% endif %}">
+              {{ latest_hb.cpu_temp|default:"—" }}°C
+            </div>
+          </div>
+          {% with mem_pct=latest_hb.memory_usage_pct %}
+          <div class="col-6 col-md-3">
+            <div class="label" style="font-size:.72rem; color:#8b949e">Память</div>
+            <div class="progress mt-1" style="height:6px; background:#21262d">
+              <div class="progress-bar {% if mem_pct > 85 %}bg-danger{% elif mem_pct > 70 %}bg-warning{% else %}bg-info{% endif %}"
+                   style="width:{{ mem_pct|default:0 }}%"></div>
+            </div>
+            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{{ mem_pct|default:"—" }}%</div>
+          </div>
+          {% endwith %}
+          {% with disk_pct=latest_hb.disk_usage_pct %}
+          <div class="col-6 col-md-3">
+            <div class="label" style="font-size:.72rem; color:#8b949e">Диск</div>
+            <div class="progress mt-1" style="height:6px; background:#21262d">
+              <div class="progress-bar {% if disk_pct > 90 %}bg-danger{% elif disk_pct > 75 %}bg-warning{% else %}bg-secondary{% endif %}"
+                   style="width:{{ disk_pct|default:0 }}%"></div>
+            </div>
+            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{{ disk_pct|default:"—" }}%</div>
+          </div>
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Packet filters -->
+    <div class="card mb-2">
+      <div class="card-body py-2 px-3">
+        <form method="get" class="row g-2 align-items-end">
+          <div class="col-auto">
+            <select name="severity" class="form-select form-select-sm">
+              <option value="">Все severity</option>
+              {% for val,label in severity_levels %}<option value="{{ val }}" {% if filter_severity == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-auto">
+            <select name="anomaly" class="form-select form-select-sm">
+              <option value="">Все пакеты</option>
+              <option value="1" {% if filter_anomaly == "1" %}selected{% endif %}>Только аномалии</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <input type="date" name="from_date" value="{{ filter_from }}" class="form-control form-control-sm" placeholder="От">
+          </div>
+          <div class="col-auto">
+            <input type="date" name="to_date" value="{{ filter_to }}" class="form-control form-control-sm" placeholder="До">
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-funnel"></i></button>
+            <a href="{% url 'device-detail' device.id %}" class="btn btn-sm btn-link text-muted">Сброс</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Packets table -->
+    <div class="card">
+      <div class="card-header py-2 d-flex align-items-center justify-content-between">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-music-note-list me-2"></i>Аудиопакеты (90 дней)</span>
+        <span style="font-size:.75rem; color:#8b949e">{{ packets|length }} записей</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr>
+                <th class="ps-3">Время записи</th>
+                <th>Severity</th>
+                <th>Класс</th>
+                <th>Уверенность</th>
+                <th>Длит.</th>
+                <th>Статус оп.</th>
+                <th>Аудио</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for pkt in packets %}
+              <tr {% if pkt.severity == 'critical' %}style="background:rgba(248,81,73,.05)"{% elif pkt.severity == 'warning' %}style="background:rgba(255,193,7,.04)"{% endif %}>
+                <td class="ps-3" style="font-size:.8rem; white-space:nowrap; font-family:monospace">
+                  {{ pkt.recorded_at|date:"d.m.Y H:i" }}
+                </td>
+                <td>
+                  <span class="sev-{{ pkt.severity }}" style="font-size:.78rem">
+                    <i class="bi bi-circle-fill" style="font-size:.45rem"></i> {{ pkt.get_severity_display }}
+                  </span>
+                </td>
+                <td style="font-size:.8rem">{{ pkt.get_dominant_class_display }}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-1">
+                    <div class="progress flex-grow-1" style="height:4px; background:#21262d; width:50px">
+                      <div class="progress-bar {% if pkt.severity == 'critical' %}bg-danger{% elif pkt.severity == 'warning' %}bg-warning{% else %}bg-success{% endif %}"
+                           style="width:{% if pkt.dominant_class_score %}{{ pkt.dominant_class_score|floatformat:2|default:0 }}{% else %}0{% endif %}00%"></div>
+                    </div>
+                    <span style="font-size:.75rem; color:#8b949e; width:36px">
+                      {% if pkt.dominant_class_score %}{{ pkt.dominant_class_score|floatformat:2 }}{% else %}—{% endif %}
+                    </span>
+                  </div>
+                </td>
+                <td style="font-size:.75rem; color:#8b949e">
+                  {% if pkt.duration_seconds %}{{ pkt.duration_seconds|floatformat:0 }}с{% else %}—{% endif %}
+                </td>
+                <td style="font-size:.72rem">
+                  {% if pkt.operator_status == 'reviewed' %}<span class="text-success">Проверено</span>
+                  {% elif pkt.operator_status == 'false_positive' %}<span class="text-muted">Ложное</span>
+                  {% elif pkt.operator_status == 'escalated' %}<span class="text-warning">Передано</span>
+                  {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td>
+                  {% if pkt.audio_file %}
+                    <audio controls style="height:24px; width:130px" preload="none">
+                      <source src="{{ pkt.audio_file.url }}" type="audio/wav">
+                    </audio>
+                  {% else %}
+                    <span class="text-muted" style="font-size:.72rem">нет файла</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <button class="btn btn-sm py-0 px-1 btn-outline-secondary"
+                          onclick="showPacketDetail('{{ pkt.id }}', '{{ pkt.recorded_at|date:"d.m.Y H:i" }}', '{{ pkt.get_dominant_class_display }}', '{{ pkt.dominant_class_score|default:0 }}', '{{ pkt.get_severity_display }}')"
+                          style="font-size:.7rem">
+                    <i class="bi bi-list-ul"></i>
+                  </button>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="8" class="text-center text-muted py-4">Пакетов нет</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right col -->
+  <div class="col-12 col-xl-4">
+
+    <!-- Audio class chart -->
+    <div class="card mb-3">
+      <div class="card-header py-2">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-radar me-2"></i>Аудиоклассы (7 дней)</span>
+      </div>
+      <div class="card-body py-2">
+        <canvas id="classChart" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- Open incidents -->
+    {% if open_incidents %}
+    <div class="card mb-3">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-exclamation-triangle me-2"></i>Открытые инциденты</span>
+      </div>
+      <div class="card-body p-0">
+        {% for inc in open_incidents %}
+          <a href="{% url 'incident-detail' inc.id %}" class="d-flex align-items-start gap-2 px-3 py-2 text-decoration-none border-bottom"
+             style="border-color:#21262d!important">
+            <span class="sev-{{ inc.severity }} mt-1" style="font-size:.8rem"><i class="bi bi-circle-fill" style="font-size:.45rem"></i></span>
+            <div style="flex:1; min-width:0">
+              <div style="font-size:.82rem; color:#f0f6fc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ inc.title }}</div>
+              <div style="font-size:.72rem; color:#8b949e">{{ inc.created_at|timesince }} назад · {{ inc.get_status_display }}</div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Status history -->
+    <div class="card mb-3">
+      <div class="card-header py-2">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-clock-history me-2"></i>История статусов</span>
+      </div>
+      <div class="card-body p-0">
+        {% for h in status_history %}
+          <div class="px-3 py-2 border-bottom d-flex gap-2" style="border-color:#21262d!important">
+            <div style="flex:1; min-width:0">
+              <div style="font-size:.78rem; color:#dee2e6">
+                <span class="text-muted">{{ h.previous_status|default:"—" }}</span>
+                <i class="bi bi-arrow-right mx-1" style="font-size:.65rem"></i>
+                <span class="badge badge-{{ h.new_status }}" style="font-size:.68rem">{{ h.get_new_status_display }}</span>
+              </div>
+              {% if h.reason %}<div style="font-size:.72rem; color:#8b949e">{{ h.reason|truncatechars:60 }}</div>{% endif %}
+              <div style="font-size:.7rem; color:#484f58">
+                {{ h.changed_at|date:"d.m.Y H:i" }}
+                {% if h.changed_by %}· {{ h.changed_by.username }}{% endif %}
+                {% if h.is_automated %}<span class="text-muted">· авто</span>{% endif %}
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="text-center text-muted py-2" style="font-size:.8rem">Нет данных</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Comments -->
+    <div class="card mb-3">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-chat-left-text me-2"></i>Комментарии</span>
+        <button class="btn btn-sm btn-outline-secondary py-0" data-bs-toggle="modal" data-bs-target="#commentModal" style="font-size:.75rem">
+          + Добавить
+        </button>
+      </div>
+      <div class="card-body p-0">
+        {% for c in comments %}
+          <div class="px-3 py-2 border-bottom" style="border-color:#21262d!important">
+            <div style="font-size:.8rem; color:#dee2e6">{{ c.text }}</div>
+            <div style="font-size:.7rem; color:#484f58">
+              {{ c.author.username|default:"?" }} · {{ c.created_at|date:"d.m.Y H:i" }}
+            </div>
+          </div>
+        {% empty %}
+          <div class="text-center text-muted py-2" style="font-size:.8rem">Нет комментариев</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Remote sessions -->
+    {% if recent_sessions %}
+    <div class="card">
+      <div class="card-header py-2">
+        <span style="font-size:.85rem; font-weight:600"><i class="bi bi-terminal me-2"></i>Удалённые сессии</span>
+      </div>
+      <div class="card-body p-0">
+        {% for ses in recent_sessions %}
+          <div class="px-3 py-2 border-bottom" style="border-color:#21262d!important">
+            <div style="font-size:.8rem; color:#dee2e6">{{ ses.operator.username }} · {{ ses.get_status_display }}</div>
+            <div style="font-size:.7rem; color:#484f58">{{ ses.created_at|date:"d.m.Y H:i" }}{% if ses.duration_seconds %} · {{ ses.duration_seconds }}с{% endif %}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- Change Status Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title">Сменить статус</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <select id="newStatusSelect" class="form-select form-select-sm mb-2">
+          {% for val,label in device_statuses %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+        </select>
+        <textarea id="statusReason" class="form-control form-control-sm" rows="2" placeholder="Причина (необязательно)"></textarea>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button class="btn btn-sm btn-success" onclick="changeStatus()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Comment Modal -->
+<div class="modal fade" id="commentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title">Добавить комментарий</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <textarea id="commentText" class="form-control" rows="3" placeholder="Текст комментария..."></textarea>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button class="btn btn-sm btn-success" onclick="addComment()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Packet detail offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="packetOffcanvas" style="background:#161b22; border-left:1px solid #30363d; width:380px">
+  <div class="offcanvas-header border-bottom" style="border-color:#30363d!important">
+    <h6 class="offcanvas-title">Детали пакета</h6>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body" id="packetOffcanvasBody"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const DEVICE_ID = '{{ device.id }}';
+
+// ---- Status change ----
+function changeStatus() {
+  const status = document.getElementById('newStatusSelect').value;
+  const reason = document.getElementById('statusReason').value;
+  fetch(`/api/v1/devices/${DEVICE_ID}/status/`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({status, reason})
+  }).then(r => r.json()).then(data => {
+    if (data.success) location.reload();
+    else alert('Ошибка: ' + JSON.stringify(data));
+  });
+}
+
+// ---- Add comment ----
+function addComment() {
+  const text = document.getElementById('commentText').value.trim();
+  if (!text) return;
+  fetch(`/api/v1/devices/${DEVICE_ID}/comments/`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({text})
+  }).then(r => r.json()).then(() => location.reload());
+}
+
+
+// ---- Packet detail offcanvas ----
+function showPacketDetail(id, dt, cls, score, sev) {
+  const body = document.getElementById('packetOffcanvasBody');
+  body.innerHTML = `<p class="text-muted mb-1" style="font-size:.75rem">Загрузка...</p>`;
+  new bootstrap.Offcanvas(document.getElementById('packetOffcanvas')).show();
+
+  fetch(`/api/v1/packets/${id}/`)
+    .then(r => r.json())
+    .then(p => {
+      const scores = (p.class_scores || []).sort((a,b) => b.score - a.score);
+      const scoresHtml = scores.map(s => `
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <div style="width:130px; font-size:.78rem; color:${s.threshold_exceeded?'#ffc107':'#8b949e'}">${s.audio_class_display}</div>
+          <div class="progress flex-grow-1" style="height:5px; background:#21262d">
+            <div class="progress-bar ${s.threshold_exceeded?'bg-warning':'bg-secondary'}" style="width:${(s.score*100).toFixed(1)}%"></div>
+          </div>
+          <div style="width:40px; font-size:.75rem; text-align:right; color:#dee2e6">${(s.score*100).toFixed(1)}%</div>
+        </div>`).join('');
+
+      body.innerHTML = `
+        <div class="mb-3">
+          <div style="font-size:.72rem; color:#484f58">Время записи</div>
+          <div style="font-family:monospace; font-size:.85rem">${dt}</div>
+        </div>
+        <div class="mb-3">
+          <div style="font-size:.72rem; color:#484f58">Severity / Класс</div>
+          <div><span class="sev-${p.severity}">${p.severity_display}</span> · ${p.dominant_class_display} (${(p.dominant_class_score*100).toFixed(1)}%)</div>
+        </div>
+        <div class="mb-3">
+          <div style="font-size:.72rem; color:#484f58 mb-1">Распределение классов</div>
+          <div class="mt-1">${scoresHtml || '<span class="text-muted">Нет данных</span>'}</div>
+        </div>
+        ${p.audio_file_url ? `
+        <div class="mb-3">
+          <div style="font-size:.72rem; color:#484f58">Аудиозапись</div>
+          <audio controls class="w-100 mt-1" preload="none">
+            <source src="${p.audio_file_url}">
+          </audio>
+        </div>` : ''}
+        <div class="mb-2">
+          <div style="font-size:.72rem; color:#484f58">CPU / Temp / Memory / Disk</div>
+          <div style="font-size:.78rem; color:#dee2e6; font-family:monospace">
+            ${p.device_cpu_usage||'?'}% / ${p.device_cpu_temp||'?'}°C / ${p.device_memory_usage_pct||'?'}% / ${p.device_disk_usage_pct||'?'}%
+          </div>
+        </div>
+        <hr style="border-color:#30363d">
+        <div style="font-size:.72rem; color:#484f58">Верификация оператора</div>
+        <select id="opsSelect_${id}" class="form-select form-select-sm mt-1">
+          <option value="reviewed" ${p.operator_status=='reviewed'?'selected':''}>Проверено</option>
+          <option value="false_positive" ${p.operator_status=='false_positive'?'selected':''}>Ложное срабатывание</option>
+          <option value="escalated" ${p.operator_status=='escalated'?'selected':''}>Передано</option>
+        </select>
+        <textarea id="opsNote_${id}" class="form-control form-control-sm mt-1" rows="2" placeholder="Примечание">${p.operator_notes||''}</textarea>
+        <button class="btn btn-sm btn-outline-success mt-2 w-100" onclick="reviewPacket('${id}')">Сохранить</button>
+      `;
+    });
+}
+
+function reviewPacket(id) {
+  const status = document.getElementById(`opsSelect_${id}`).value;
+  const notes = document.getElementById(`opsNote_${id}`).value;
+  fetch(`/api/v1/packets/${id}/review/`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({operator_status: status, operator_notes: notes})
+  }).then(() => location.reload());
+}
+
+// ---- Radar chart for audio classes ----
+const chartData = {{ chart_data|safe }};
+const classLabels = {'normal':'Норма','noise':'Шум','grinding':'Скрежет','squeak':'Скрип',
+  'knock':'Стук','whistle':'Свист','foreign_sounds':'Посторонние','speech':'Речь','other_anomaly':'Иное'};
+const labels = Object.keys(chartData).map(k => classLabels[k] || k);
+const scores = Object.values(chartData).map(v => (v.avg_score * 100).toFixed(1));
+
+if (labels.length > 0) {
+  new Chart(document.getElementById('classChart'), {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Средний балл (%)',
+        data: scores,
+        backgroundColor: 'rgba(88,166,255,.15)',
+        borderColor: '#58a6ff',
+        pointBackgroundColor: '#58a6ff',
+        pointRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { color: '#8b949e', font: { size: 9 }, stepSize: 25 },
+          grid: { color: '#21262d' },
+          pointLabels: { color: '#8b949e', font: { size: 10 } },
+          angleLines: { color: '#21262d' }
+        }
+      }
+    }
+  });
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? v.pop() : '';
+}
+</script>
+{% endblock %}

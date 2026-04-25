@@ -1,0 +1,31 @@
+Port 22
+Protocol 2
+
+# Host keys (generated at container startup)
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Authentication
+AuthorizedKeysFile /home/tunnel/.ssh/authorized_keys
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+PermitRootLogin no
+AllowUsers tunnel
+
+# Allow reverse tunnel forwarding
+# GatewayPorts yes — makes the forwarded port bind to 0.0.0.0
+# so the operator can connect from outside the container
+GatewayPorts yes
+AllowTcpForwarding yes
+PermitTunnel no
+X11Forwarding no
+
+# Connection keepalive
+ClientAliveInterval 30
+ClientAliveCountMax 3
+
+# Disable interactive shell for tunnel user (belt+suspenders)
+Match User tunnel
+    ForceCommand /sbin/nologin
+    AllowTcpForwarding yes
+    PermitTTY no
