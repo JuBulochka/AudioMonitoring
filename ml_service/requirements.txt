@@ -1,7 +1,7 @@
 fastapi==0.115.5
 uvicorn==0.32.1
 librosa==0.11.0
-scikit-learn==1.5.2
+scikit-learn==1.8.0
 numpy==1.26.4
 joblib==1.4.2
 soundfile==0.12.1

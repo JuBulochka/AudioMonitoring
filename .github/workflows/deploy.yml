@@ -22,6 +22,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 40m
           script: |
             set -e
             cd ~/kursachAudio
@@ -29,12 +30,21 @@ jobs:
             echo "==> Pulling latest code..."
             git pull origin main
 
-            echo "==> Checking if dependencies changed..."
-            if git diff HEAD~1 HEAD --name-only | grep -qE 'requirements|Dockerfile|docker-compose'; then
-              echo "==> Rebuilding containers..."
+            echo "==> Checking changed files..."
+            CHANGED=$(git diff HEAD~1 HEAD --name-only)
+
+            # Rebuild ml-service only if its files changed (TF build is slow)
+            if echo "$CHANGED" | grep -qE 'ml_service/'; then
+              echo "==> Rebuilding ml-service (may take 5-10 min for TensorFlow)..."
+              docker compose up -d --build ml-service
+            fi
+
+            # Rebuild web/celery if their deps changed
+            if echo "$CHANGED" | grep -qE 'requirements\.txt|apps/.*/Dockerfile|^Dockerfile|docker-compose'; then
+              echo "==> Rebuilding web + celery..."
               docker compose up -d --build web celery celery-beat
             else
-              echo "==> Restarting web only..."
+              echo "==> Restarting web + celery..."
               docker compose restart web celery celery-beat
             fi
 

@@ -95,6 +95,25 @@ class Analyzer:
         log.info("Analyzer ready.")
 
     def _load_class_names(self):
+        # 1. Try local file (bundled in Docker image)
+        local_csv = os.path.join(os.path.dirname(__file__), "yamnet_class_map.csv")
+        if os.path.exists(local_csv):
+            try:
+                with open(local_csv, encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    rows = list(reader)
+                # Build full 521-element list by index
+                names = [f"class_{i}" for i in range(521)]
+                for row in rows:
+                    idx = int(row["index"])
+                    if 0 <= idx < 521:
+                        names[idx] = row["display_name"]
+                log.info("Loaded YAMNet class map from local file (%d classes)", len(rows))
+                return names
+            except Exception as e:
+                log.warning("Could not read local class map: %s", e)
+
+        # 2. Try downloading from GitHub
         try:
             with urllib.request.urlopen(YAMNET_CLASS_MAP_URL, timeout=10) as r:
                 content = r.read().decode("utf-8")

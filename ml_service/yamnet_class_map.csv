@@ -1,0 +1,70 @@
+index,mid,display_name
+0,/m/09x0r,Speech
+1,/m/0ytgt,"Child speech, kid speaking"
+2,/m/01h8n0,Conversation
+3,/m/02qldy,"Narration, monologue"
+4,/m/0261r1,Babbling
+5,/m/0brhx,Speech synthesizer
+6,/m/07p6fty,Shout
+7,/m/07q4ntr,Bellow
+8,/m/07rwj3x,Whoop
+9,/m/07sr1lc,Yell
+10,/t/dd00135,Children shouting
+11,/m/03qc9zr,Screaming
+12,/m/02rtxlg,Whispering
+33,/m/07s33rl,Groan
+35,/m/01w250,Whistling
+79,/m/07rjwbb,Hiss
+125,/m/07pjwq1,Buzz
+130,/m/07qn4z3,Rattle
+277,/m/03m9d0z,Wind
+279,/t/dd00092,Wind noise (microphone)
+290,/m/06wzb,Steam
+293,/m/07pzfmf,Crackle
+300,/m/012f08,Motor vehicle (road)
+337,/m/02mk9,Engine
+338,/t/dd00065,Light engine (high frequency)
+342,/t/dd00066,Medium engine (mid frequency)
+343,/t/dd00067,Heavy engine (low frequency)
+344,/m/01h82_,Engine knocking
+350,/m/07r67yg,Ding-dong
+352,/m/07rjzl8,Slam
+353,/m/07r4wb8,Knock
+354,/m/07qcpgn,Tap
+355,/m/07q6cd_,Squeak
+403,/m/0l7xg,Gears
+406,/m/02x984l,Mechanical fan
+412,/m/07k1x,Tools
+413,/m/03l9g,Hammer
+415,/m/01b82r,Sawing
+416,/m/02p01q,"Filing (rasp)"
+417,/m/023vsd,Sanding
+418,/m/0_ksk,Power tool
+419,/m/01d380,Drill
+436,/m/07q7njn,"Chink, clink"
+448,/m/07ptzwd,"Pump (liquid)"
+453,/m/07rsjt,"Whoosh, swoosh, swish"
+454,/m/07qnq_y,"Thump, thud"
+455,/m/07rrh0c,Thunk
+460,/m/07p78v5,Bang
+468,/m/07qb_dv,Scratch
+469,/m/07qv4k0,Scrape
+470,/m/07pdjhy,Rub
+477,/m/07phxs1,Ding
+478,/m/07rv4dm,Clang
+479,/m/07s02z0,Squeal
+480,/m/07qh7jl,Creak
+482,/m/07s34ls,Whir
+483,/m/07qmpdm,Clatter
+487,/m/07phhsh,Rumble
+489,/m/07qfgpx,"Jingle, tinkle"
+490,/m/07rcgpl,Hum
+396,/m/0l156k,Whistle
+397,/m/06hck5,Steam whistle
+507,/m/096m7z,Noise
+508,/m/06_y0by,Environmental noise
+509,/m/07rgkc5,Static
+510,/m/06xkwv,Mains hum
+514,/m/0chx_,White noise
+515,/m/0c1dj0,Pink noise
+517,/m/01jwx6,Vibration
