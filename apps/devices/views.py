@@ -266,3 +266,78 @@ def device_map(request):
         "yandex_maps_api_key": django_settings.YANDEX_MAPS_API_KEY,
     }
     return render(request, "devices/map.html", ctx)
+
+
+@login_required
+def audio_test(request):
+    """Page for manual audio file testing through ML model."""
+    return render(request, "devices/audio_test.html")
+
+
+@login_required
+def audio_test_analyze(request):
+    """AJAX endpoint: receive audio file, run ML analysis, return JSON."""
+    import tempfile
+    import os
+    import requests as http_requests
+    from django.http import JsonResponse
+    from django.conf import settings as django_settings
+
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    audio_file = request.FILES.get("audio_file")
+    if not audio_file:
+        return JsonResponse({"error": "Файл не загружен"}, status=400)
+
+    # Validate file type
+    allowed_types = {"audio/wav", "audio/ogg", "audio/mpeg", "audio/flac", "audio/x-wav"}
+    allowed_exts  = {".wav", ".ogg", ".mp3", ".flac"}
+    ext = os.path.splitext(audio_file.name)[1].lower()
+    if ext not in allowed_exts:
+        return JsonResponse({"error": f"Неподдерживаемый формат: {ext}"}, status=400)
+
+    # Save to temp file
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            for chunk in audio_file.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        # Call ML service
+        ml_url = getattr(django_settings, "ML_SERVICE_URL", "http://ml-service:8001")
+        resp = http_requests.post(
+            f"{ml_url}/analyze",
+            json={"file_path": tmp_path},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        result = resp.json()
+
+        # Add human-readable labels
+        CLASS_LABELS = {
+            "normal":        "Норма",
+            "noise":         "Шум",
+            "grinding":      "Скрежет",
+            "squeak":        "Скрип",
+            "knock":         "Стук",
+            "whistle":       "Свист",
+            "foreign_sounds":"Посторонние звуки",
+            "speech":        "Речь",
+            "other_anomaly": "Иная аномалия",
+        }
+        result["class_labels"] = CLASS_LABELS
+        result["filename"] = audio_file.name
+        result["file_size_kb"] = round(audio_file.size / 1024, 1)
+        return JsonResponse(result)
+
+    except http_requests.exceptions.ConnectionError:
+        return JsonResponse({"error": "ML сервис недоступен. Попробуйте позже."}, status=503)
+    except http_requests.exceptions.Timeout:
+        return JsonResponse({"error": "ML сервис не отвечает (timeout). Попробуйте позже."}, status=504)
+    except Exception as e:
+        return JsonResponse({"error": f"Ошибка анализа: {e}"}, status=500)
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)

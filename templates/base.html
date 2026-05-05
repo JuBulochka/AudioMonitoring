@@ -340,6 +340,11 @@
       <i class="bi bi-terminal"></i> Удалённый доступ
     </a>
 
+    <div class="sidebar-section">Инструменты</div>
+    <a href="{% url 'audio-test' %}" class="{% if request.resolver_match.url_name == 'audio-test' %}active{% endif %}">
+      <i class="bi bi-soundwave"></i> Тест аудио
+    </a>
+
     <div class="sidebar-section">Система</div>
     <a href="/admin/" target="_blank">
       <i class="bi bi-shield-lock"></i> Админка
