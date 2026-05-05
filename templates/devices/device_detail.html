@@ -123,6 +123,11 @@
             </select>
           </div>
           <div class="col-auto">
+            <input type="text" name="class_name" value="{{ filter_class|default:'' }}"
+                   class="form-control form-control-sm" placeholder="Класс (напр. knock)"
+                   style="min-width:150px">
+          </div>
+          <div class="col-auto">
             <input type="date" name="from_date" value="{{ filter_from }}" class="form-control form-control-sm" placeholder="От">
           </div>
           <div class="col-auto">
@@ -140,7 +145,7 @@
     <div class="card">
       <div class="card-header py-2 d-flex align-items-center justify-content-between">
         <span style="font-size:.85rem; font-weight:600"><i class="bi bi-music-note-list me-2"></i>Аудиопакеты (90 дней)</span>
-        <span style="font-size:.75rem; color:#8b949e">{{ packets|length }} записей</span>
+        <span style="font-size:.75rem; color:#8b949e">{{ paginator.count }} записей</span>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -214,6 +219,45 @@
           </table>
         </div>
       </div>
+      {% if packets.has_other_pages %}
+      <div class="card-footer py-2 px-3 d-flex align-items-center justify-content-between" style="border-top:1px solid #21262d; background:transparent">
+        <span style="font-size:.75rem; color:#8b949e">
+          Стр. {{ packets.number }} из {{ packets.paginator.num_pages }}
+          &nbsp;·&nbsp; всего {{ paginator.count }} записей
+        </span>
+        <nav>
+          <ul class="pagination pagination-sm mb-0" style="gap:2px">
+            {% if packets.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page=1{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_anomaly %}&anomaly={{ filter_anomaly }}{% endif %}{% if filter_from %}&from_date={{ filter_from }}{% endif %}{% if filter_to %}&to_date={{ filter_to }}{% endif %}{% if filter_class %}&class_name={{ filter_class }}{% endif %}" style="font-size:.75rem">«</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ packets.previous_page_number }}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_anomaly %}&anomaly={{ filter_anomaly }}{% endif %}{% if filter_from %}&from_date={{ filter_from }}{% endif %}{% if filter_to %}&to_date={{ filter_to }}{% endif %}{% if filter_class %}&class_name={{ filter_class }}{% endif %}" style="font-size:.75rem">‹</a>
+              </li>
+            {% endif %}
+
+            {% for num in packets.paginator.page_range %}
+              {% if num == packets.number %}
+                <li class="page-item active"><span class="page-link" style="font-size:.75rem">{{ num }}</span></li>
+              {% elif num >= packets.number|add:"-2" and num <= packets.number|add:"2" %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ num }}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_anomaly %}&anomaly={{ filter_anomaly }}{% endif %}{% if filter_from %}&from_date={{ filter_from }}{% endif %}{% if filter_to %}&to_date={{ filter_to }}{% endif %}{% if filter_class %}&class_name={{ filter_class }}{% endif %}" style="font-size:.75rem">{{ num }}</a>
+                </li>
+              {% endif %}
+            {% endfor %}
+
+            {% if packets.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ packets.next_page_number }}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_anomaly %}&anomaly={{ filter_anomaly }}{% endif %}{% if filter_from %}&from_date={{ filter_from }}{% endif %}{% if filter_to %}&to_date={{ filter_to }}{% endif %}{% if filter_class %}&class_name={{ filter_class }}{% endif %}" style="font-size:.75rem">›</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ packets.paginator.num_pages }}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_anomaly %}&anomaly={{ filter_anomaly }}{% endif %}{% if filter_from %}&from_date={{ filter_from }}{% endif %}{% if filter_to %}&to_date={{ filter_to }}{% endif %}{% if filter_class %}&class_name={{ filter_class }}{% endif %}" style="font-size:.75rem">»</a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
     </div>
   </div>
 

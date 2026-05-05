@@ -487,6 +487,26 @@ def poll_commands() -> list:
 
 def execute_command(cmd: dict) -> tuple[str, int]:
     key     = cmd.get("command_key", "")
+
+    # ── Special case: record_now ───────────────────────────────────────────
+    # The shell-script approach (create trigger file, wait for it to vanish)
+    # dead-locks: execute_command() blocks the main loop, so the trigger
+    # is never processed.  Instead, set the flag from Python and return
+    # immediately — the main loop will pick it up within ≤5 seconds.
+    if key == "record_now":
+        try:
+            Path(RECORD_TRIGGER_FILE).touch()
+            log.info("record_now: trigger file created at %s", RECORD_TRIGGER_FILE)
+            return (
+                "Триггер записи создан: " + RECORD_TRIGGER_FILE + "\n"
+                "Edge client запустит запись в течение 5–35 секунд.\n"
+                "OK"
+            ), 0
+        except OSError as exc:
+            msg = f"Не удалось создать файл триггера: {exc}"
+            log.error(msg)
+            return msg, 1
+
     cmd_def = _CMD_CATALOG.get(key)
 
     if not cmd_def:

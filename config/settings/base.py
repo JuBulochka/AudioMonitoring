@@ -287,7 +287,7 @@ STORAGE_BACKEND = env("STORAGE_BACKEND")
 # Internationalization
 # ---------------------------------------------------------------------------
 LANGUAGE_CODE = "ru"
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Moscow"
 USE_I18N = True
 USE_TZ = True
 

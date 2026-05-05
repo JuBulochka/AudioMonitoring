@@ -1,6 +1,7 @@
 """Device web views."""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
@@ -75,6 +76,7 @@ def device_detail(request, device_id):
     anomaly = request.GET.get("anomaly")
     from_dt = request.GET.get("from_date")
     to_dt = request.GET.get("to_date")
+    class_name = request.GET.get("class_name", "").strip()
 
     if sev:
         packets_qs = packets_qs.filter(severity=sev)
@@ -90,8 +92,12 @@ def device_detail(request, device_id):
         d = parse_date(to_dt)
         if d:
             packets_qs = packets_qs.filter(recorded_at__date__lte=d)
+    if class_name:
+        packets_qs = packets_qs.filter(dominant_class__icontains=class_name)
 
-    packets = packets_qs[:100]
+    paginator = Paginator(packets_qs, 30)
+    page_number = request.GET.get("page", 1)
+    packets_page = paginator.get_page(page_number)
 
     # Status history
     status_history = device.status_history.select_related("changed_by").order_by("-changed_at")[:20]
@@ -133,7 +139,8 @@ def device_detail(request, device_id):
 
     ctx = {
         "device": device,
-        "packets": packets,
+        "packets": packets_page,
+        "paginator": paginator,
         "status_history": status_history,
         "comments": comments,
         "open_incidents": open_incidents,
@@ -146,6 +153,7 @@ def device_detail(request, device_id):
         "filter_anomaly": anomaly or "",
         "filter_from": from_dt or "",
         "filter_to": to_dt or "",
+        "filter_class": class_name,
     }
     return render(request, "devices/device_detail.html", ctx)
 
