@@ -343,7 +343,15 @@
         headers: { 'X-CSRFToken': csrfToken },
         body: formData,
       });
-      const data = await resp.json();
+
+      let data;
+      try {
+        data = await resp.json();
+      } catch (jsonErr) {
+        stopProgress(false);
+        showError(`Ошибка сервера: ${resp.status} (не JSON)`);
+        return;
+      }
 
       if (!resp.ok) {
         stopProgress(false);
@@ -353,8 +361,9 @@
       stopProgress(true);
       renderResults(data);
     } catch (err) {
+      console.error('Audio analyze error:', err);
       stopProgress(false);
-      showError('Ошибка сети. Проверьте подключение.');
+      showError('Ошибка сети. Проверьте подключение и попробуйте снова.');
     } finally {
       hideLoading();
     }

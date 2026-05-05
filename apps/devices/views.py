@@ -277,7 +277,6 @@ def audio_test(request):
 @login_required
 def audio_test_analyze(request):
     """AJAX endpoint: receive audio file, run ML analysis, return JSON."""
-    import tempfile
     import os
     import requests as http_requests
     from django.http import JsonResponse
@@ -297,19 +296,26 @@ def audio_test_analyze(request):
     if ext not in allowed_exts:
         return JsonResponse({"error": f"Неподдерживаемый формат: {ext}"}, status=400)
 
-    # Save to temp file
-    tmp_path = None
+    # Save to shared media/tmp/ — accessible by both web and ml-service containers
+    import uuid
+    from django.conf import settings as django_settings
+    media_tmp_dir = os.path.join(django_settings.MEDIA_ROOT, "tmp")
+    os.makedirs(media_tmp_dir, exist_ok=True)
+
+    tmp_filename = f"audiotest_{uuid.uuid4().hex}{ext}"
+    tmp_path = os.path.join(media_tmp_dir, tmp_filename)
+    ml_path  = f"/app/media/tmp/{tmp_filename}"   # path as seen by ml-service container
+
     try:
-        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        with open(tmp_path, "wb") as f:
             for chunk in audio_file.chunks():
-                tmp.write(chunk)
-            tmp_path = tmp.name
+                f.write(chunk)
 
         # Call ML service
         ml_url = getattr(django_settings, "ML_SERVICE_URL", "http://ml-service:8001")
         resp = http_requests.post(
             f"{ml_url}/analyze",
-            json={"file_path": tmp_path},
+            json={"file_path": ml_path},
             timeout=60,
         )
         resp.raise_for_status()
