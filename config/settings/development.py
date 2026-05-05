@@ -5,6 +5,13 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://almetpt-tatneft.ru",
+    "https://www.almetpt-tatneft.ru",
+    "http://localhost",
+    "http://127.0.0.1",
+]
+
 # Disable HTTPS enforcement in development
 SECURE_SSL_REDIRECT = False
 
