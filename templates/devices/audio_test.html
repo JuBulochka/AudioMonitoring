@@ -106,6 +106,17 @@
   }
   #loading-overlay.active { display: flex; }
 
+  /* ── Steps ─────────────────────────────────────────── */
+  .step-item.done .step-icon::before  { content: "\F26A"; color: #28a745; } /* bi-check-circle-fill */
+  .step-item.active .step-icon::before { content: "\F50F"; color: #0969da; } /* bi-arrow-right-circle-fill */
+  .step-item.done span   { color: var(--txt-primary) !important; }
+  .step-item.active span { color: var(--txt-primary) !important; font-weight: 600; }
+
+  @keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .7; }
+  }
+
   /* ── Results card ───────────────────────────────────── */
   #results-area { display: none; }
   #results-area.visible { display: block; }
@@ -147,15 +158,6 @@
           </button>
         </form>
 
-        <!-- Info box -->
-        <div class="mt-4 p-3 rounded" style="background:var(--bg-card-header);border:1px solid var(--border-clr);font-size:.8rem;color:var(--txt-muted)">
-          <div class="fw-semibold mb-1" style="color:var(--txt-primary)"><i class="bi bi-info-circle"></i> Как работает анализ</div>
-          <ul class="mb-0 ps-3" style="line-height:1.7">
-            <li><b>Isolation Forest</b> — определяет отклонение от «нормального» звука насоса (обучен на ваших 69 записях + аугментация)</li>
-            <li><b>YAMNet</b> (Google) — распознаёт тип звука: стук, скрип, свист, речь и т.д.</li>
-            <li>Результат — совместная оценка обоих методов</li>
-          </ul>
-        </div>
       </div>
     </div>
   </div>
@@ -169,11 +171,47 @@
     </div>
 
     <!-- Loading -->
-    <div id="loading-state" class="card border text-center d-none" style="padding:3rem 2rem">
-      <div class="spinner-border text-primary mx-auto" style="width:3rem;height:3rem"></div>
-      <div class="mt-3 fw-semibold" style="color:var(--txt-primary)">Анализируем файл...</div>
-      <div class="mt-1" style="font-size:.82rem;color:var(--txt-muted)">
-        Это может занять 5–15 секунд (YAMNet обрабатывает аудио)
+    <div id="loading-state" class="card border d-none" style="padding:2rem 2rem">
+      <!-- Spinner + title -->
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="spinner-border text-primary flex-shrink-0" style="width:2.2rem;height:2.2rem"></div>
+        <div>
+          <div class="fw-semibold" style="color:var(--txt-primary)">Анализируем файл...</div>
+          <div style="font-size:.8rem;color:var(--txt-muted)">Обычно занимает 10–30 секунд</div>
+        </div>
+        <div class="ms-auto fw-semibold" id="elapsed-timer"
+             style="font-size:1.1rem;color:var(--txt-muted);min-width:3rem;text-align:right">0с</div>
+      </div>
+
+      <!-- Animated progress bar -->
+      <div style="background:var(--bg-card-header);border-radius:6px;height:6px;overflow:hidden;margin-bottom:1.25rem">
+        <div id="progress-bar"
+             style="height:100%;background:linear-gradient(90deg,#0969da,#58a6ff);border-radius:6px;
+                    width:5%;transition:width .8s ease;animation:progressPulse 2s infinite"></div>
+      </div>
+
+      <!-- Step list -->
+      <div style="font-size:.82rem;">
+        <div class="step-item d-flex align-items-center gap-2 mb-2" data-step="1">
+          <i class="bi bi-circle step-icon" style="color:var(--txt-dim);font-size:.9rem"></i>
+          <span style="color:var(--txt-muted)">Загрузка и подготовка аудио</span>
+        </div>
+        <div class="step-item d-flex align-items-center gap-2 mb-2" data-step="2">
+          <i class="bi bi-circle step-icon" style="color:var(--txt-dim);font-size:.9rem"></i>
+          <span style="color:var(--txt-muted)">Извлечение признаков MFCC</span>
+        </div>
+        <div class="step-item d-flex align-items-center gap-2 mb-2" data-step="3">
+          <i class="bi bi-circle step-icon" style="color:var(--txt-dim);font-size:.9rem"></i>
+          <span style="color:var(--txt-muted)">Isolation Forest — анализ аномалий</span>
+        </div>
+        <div class="step-item d-flex align-items-center gap-2 mb-2" data-step="4">
+          <i class="bi bi-circle step-icon" style="color:var(--txt-dim);font-size:.9rem"></i>
+          <span style="color:var(--txt-muted)">YAMNet — распознавание звуков</span>
+        </div>
+        <div class="step-item d-flex align-items-center gap-2" data-step="5">
+          <i class="bi bi-circle step-icon" style="color:var(--txt-dim);font-size:.9rem"></i>
+          <span style="color:var(--txt-muted)">Формирование результата</span>
+        </div>
       </div>
     </div>
 
@@ -308,16 +346,69 @@
       const data = await resp.json();
 
       if (!resp.ok) {
+        stopProgress(false);
         showError(data.error || `Ошибка сервера: ${resp.status}`);
         return;
       }
+      stopProgress(true);
       renderResults(data);
     } catch (err) {
+      stopProgress(false);
       showError('Ошибка сети. Проверьте подключение.');
     } finally {
       hideLoading();
     }
   });
+
+  // ── Progress animation ───────────────────────────────────
+  let progressTimer = null;
+  let elapsedTimer  = null;
+  const STEPS = [
+    { step: 1, at: 0,  pct: 10 },
+    { step: 2, at: 2,  pct: 25 },
+    { step: 3, at: 5,  pct: 50 },
+    { step: 4, at: 9,  pct: 75 },
+    { step: 5, at: 18, pct: 90 },
+  ];
+
+  function startProgress() {
+    const bar      = document.getElementById('progress-bar');
+    const timerEl  = document.getElementById('elapsed-timer');
+    const stepEls  = document.querySelectorAll('.step-item');
+    let elapsed    = 0;
+
+    // Reset steps
+    stepEls.forEach(el => el.classList.remove('done', 'active'));
+    bar.style.width = '5%';
+
+    elapsedTimer = setInterval(() => {
+      elapsed++;
+      timerEl.textContent = elapsed + 'с';
+    }, 1000);
+
+    // Schedule step activations
+    STEPS.forEach(({ step, at, pct }) => {
+      setTimeout(() => {
+        stepEls.forEach(el => {
+          const s = parseInt(el.dataset.step);
+          if (s < step)  el.classList.add('done'), el.classList.remove('active');
+          if (s === step) el.classList.add('active'), el.classList.remove('done');
+        });
+        bar.style.width = pct + '%';
+      }, at * 1000);
+    });
+  }
+
+  function stopProgress(success) {
+    clearInterval(elapsedTimer);
+    const bar     = document.getElementById('progress-bar');
+    const stepEls = document.querySelectorAll('.step-item');
+    if (success) {
+      bar.style.width = '100%';
+      bar.style.background = '#28a745';
+      stepEls.forEach(el => { el.classList.add('done'); el.classList.remove('active'); });
+    }
+  }
 
   // ── UI state helpers ─────────────────────────────────────
   function showLoading() {
@@ -326,6 +417,7 @@
     resultsArea.style.display = 'none';
     loadingState.classList.remove('d-none');
     analyzeBtn.disabled = true;
+    startProgress();
   }
   function hideLoading() {
     loadingState.classList.add('d-none');
