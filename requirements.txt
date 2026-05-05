@@ -40,6 +40,7 @@ python-magic==0.4.27
 mutagen==1.47.0
 shortuuid==1.0.13
 django-cleanup==8.1.0
+requests==2.32.3
 
 # SSH (web terminal)
 asyncssh==2.14.2

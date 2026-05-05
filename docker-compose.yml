@@ -63,6 +63,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ML_SERVICE_URL: http://ml-service:8001
     volumes:
       - .:/app
       - media_data:/app/media
@@ -72,6 +73,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      ml-service:
+        condition: service_started
 
   celery-beat:
     build: .
@@ -118,6 +121,21 @@ services:
     volumes:
       - ./docker/sshd/authorized_keys:/home/tunnel/.ssh/authorized_keys:ro
       - sshd_host_keys:/etc/ssh
+
+  # ML Audio Analysis Microservice
+  ml-service:
+    build: ./ml_service
+    restart: unless-stopped
+    volumes:
+      - media_data:/app/media:ro   # read-only доступ к аудиофайлам
+    expose:
+      - "8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s   # YAMNet грузится ~60 сек при первом старте
 
   # noVNC — browser-based VNC viewer
   # Routes WebSocket connections to the right VNC tunnel port via token file.

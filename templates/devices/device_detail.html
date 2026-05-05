@@ -192,7 +192,8 @@
                 <td>
                   {% if pkt.audio_file %}
                     <audio controls style="height:24px; width:130px" preload="none">
-                      <source src="{{ pkt.audio_file.url }}" type="audio/wav">
+                      <source src="{{ pkt.audio_file.url }}"
+                        type="{% if pkt.audio_format == 'ogg' %}audio/ogg{% elif pkt.audio_format == 'mp3' %}audio/mpeg{% else %}audio/wav{% endif %}">
                     </audio>
                   {% else %}
                     <span class="text-muted" style="font-size:.72rem">нет файла</span>

@@ -25,6 +25,8 @@ env = environ.Env(
     AUDIO_MAX_FILE_SIZE_MB=(int, 50),
     SENTRY_DSN=(str, ""),
     CELERY_BEAT_SCHEDULE_ENABLED=(bool, True),
+    ML_SERVICE_URL=(str, "http://ml-service:8001"),
+    ML_SERVICE_TIMEOUT=(int, 60),
 )
 
 env_file = BASE_DIR / ".env"
@@ -360,6 +362,12 @@ AUDIO_MAX_FILE_SIZE_MB = env("AUDIO_MAX_FILE_SIZE_MB")
 REMOTE_ACCESS_TOKEN_TTL_MINUTES = env("REMOTE_ACCESS_TOKEN_TTL_MINUTES")
 DEVICE_TOKEN_SALT = env("DEVICE_TOKEN_SALT", default="default-salt-change")
 YANDEX_MAPS_API_KEY = env("YANDEX_MAPS_API_KEY", default="")
+
+# ---------------------------------------------------------------------------
+# ML Service
+# ---------------------------------------------------------------------------
+ML_SERVICE_URL     = env("ML_SERVICE_URL")
+ML_SERVICE_TIMEOUT = env("ML_SERVICE_TIMEOUT")
 
 # ---------------------------------------------------------------------------
 # Email

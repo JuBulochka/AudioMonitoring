@@ -154,8 +154,13 @@ def ingest_packet(device, data: dict, audio_file=None) -> AudioPacket:
         device.serial_number, severity, dominant_class, dominant_score,
     )
 
-    # Trigger incident creation asynchronously
-    if has_anomaly:
+    # Trigger ML analysis (overwrites device analysis with server-side ML)
+    # ML task will also trigger incident creation if anomaly detected
+    if packet.audio_file:
+        from apps.packets.tasks import analyze_audio_packet
+        analyze_audio_packet.delay(str(packet.id))
+    elif has_anomaly:
+        # No audio file — use device analysis for incidents directly
         from apps.incidents.tasks import process_anomalous_packet
         process_anomalous_packet.delay(str(packet.id))
 
