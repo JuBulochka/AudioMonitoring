@@ -225,7 +225,14 @@ class Device(models.Model):
     def mark_online(self):
         self.is_online = True
         self.last_seen_at = timezone.now()
-        self.save(update_fields=["is_online", "last_seen_at"])
+        update_fields = ["is_online", "last_seen_at"]
+
+        # Auto-restore status if device was previously marked offline
+        if self.status == DeviceStatus.OFFLINE:
+            self.status = DeviceStatus.NORMAL
+            update_fields.append("status")
+
+        self.save(update_fields=update_fields)
 
     def mark_offline(self):
         if self.is_online:
