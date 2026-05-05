@@ -69,9 +69,9 @@
             <div class="label" style="font-size:.72rem; color:#8b949e">CPU</div>
             <div class="progress mt-1" style="height:6px; background:#21262d">
               <div class="progress-bar {% if cpu_pct > 80 %}bg-danger{% elif cpu_pct > 60 %}bg-warning{% else %}bg-success{% endif %}"
-                   style="width:{{ cpu_pct|default:0 }}%"></div>
+                   style="width:{% if cpu_pct is not None %}{{ cpu_pct }}{% else %}0{% endif %}%"></div>
             </div>
-            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{{ cpu_pct|default:"—" }}%</div>
+            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{% if cpu_pct is not None %}{{ cpu_pct }}%{% else %}—{% endif %}</div>
           </div>
           {% endwith %}
           <div class="col-6 col-md-3">
@@ -86,9 +86,9 @@
             <div class="label" style="font-size:.72rem; color:#8b949e">Память</div>
             <div class="progress mt-1" style="height:6px; background:#21262d">
               <div class="progress-bar {% if mem_pct > 85 %}bg-danger{% elif mem_pct > 70 %}bg-warning{% else %}bg-info{% endif %}"
-                   style="width:{{ mem_pct|default:0 }}%"></div>
+                   style="width:{% if mem_pct is not None %}{{ mem_pct }}{% else %}0{% endif %}%"></div>
             </div>
-            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{{ mem_pct|default:"—" }}%</div>
+            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{% if mem_pct is not None %}{{ mem_pct }}%{% else %}—{% endif %}</div>
           </div>
           {% endwith %}
           {% with disk_pct=latest_hb.disk_usage_pct %}
@@ -96,9 +96,9 @@
             <div class="label" style="font-size:.72rem; color:#8b949e">Диск</div>
             <div class="progress mt-1" style="height:6px; background:#21262d">
               <div class="progress-bar {% if disk_pct > 90 %}bg-danger{% elif disk_pct > 75 %}bg-warning{% else %}bg-secondary{% endif %}"
-                   style="width:{{ disk_pct|default:0 }}%"></div>
+                   style="width:{% if disk_pct is not None %}{{ disk_pct }}{% else %}0{% endif %}%"></div>
             </div>
-            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{{ disk_pct|default:"—" }}%</div>
+            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{% if disk_pct is not None %}{{ disk_pct }}%{% else %}—{% endif %}</div>
           </div>
           {% endwith %}
         </div>
