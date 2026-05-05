@@ -23,30 +23,6 @@
     color: var(--txt-primary);
   }
 
-  /* VNC button – online vs offline */
-  .btn-vnc-online {
-    background: rgba(9,105,218,.08);
-    border-color: #0969da;
-    color: #0969da;
-    font-size: .75rem;
-    padding: 4px 12px;
-  }
-  html[data-theme="dark"] .btn-vnc-online {
-    background: rgba(31,111,235,.12);
-    border-color: #1f6feb;
-    color: #58a6ff;
-  }
-  .btn-vnc-online:hover {
-    background: rgba(9,105,218,.15);
-    color: #0969da;
-    border-color: #0969da;
-  }
-  html[data-theme="dark"] .btn-vnc-online:hover {
-    background: rgba(31,111,235,.2);
-    color: #58a6ff;
-    border-color: #1f6feb;
-  }
-
   /* Tunnel port badge */
   .badge-port {
     background: var(--bg-card-header);
@@ -164,14 +140,6 @@
           <a href="{% url 'remote-commands' device.id %}"
              class="btn btn-sm btn-ghost">
             <i class="bi bi-send me-1"></i>Команды
-          </a>
-
-          <!-- VNC Remote Desktop button -->
-          <a href="{% url 'remote-vnc' device.id %}"
-             target="_blank"
-             class="btn btn-sm {% if device.is_online %}btn-vnc-online{% else %}btn-ghost{% endif %}"
-             title="Удалённый рабочий стол (VNC)">
-            <i class="bi bi-display me-1"></i>Рабочий стол
           </a>
 
           {% if device.is_online %}

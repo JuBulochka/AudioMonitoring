@@ -43,7 +43,6 @@ services:
       - media_data:/app/media
       - static_data:/app/staticfiles
       - log_data:/app/logs
-      - vnc_tokens:/vnc_tokens   # Django writes VNC routing tokens here
     ports:
       - "8000:8000"
     depends_on:
@@ -112,14 +111,12 @@ services:
 
   # SSH Jump Server — Raspberry Pi connects here via reverse tunnel
   # Pi SSH:  autossh -R <tunnel_port>:localhost:22  tunnel@<host> -p 2222
-  # Pi VNC:  autossh -R <vnc_port>:localhost:5900   tunnel@<host> -p 2222
   sshd:
     build: ./docker/sshd
     restart: unless-stopped
     ports:
       - "2222:22"                  # Pi SSH registration port
       - "30001-30020:30001-30020"  # SSH reverse tunnel ports (one per device)
-      - "31001-31020:31001-31020"  # VNC reverse tunnel ports (one per device)
     volumes:
       - ./docker/sshd/authorized_keys:/home/tunnel/.ssh/authorized_keys:ro
       - sshd_host_keys:/etc/ssh
@@ -139,20 +136,6 @@ services:
       retries: 5
       start_period: 120s   # YAMNet грузится ~60 сек при первом старте
 
-  # noVNC — browser-based VNC viewer
-  # Routes WebSocket connections to the right VNC tunnel port via token file.
-  # Token file is written by Django when operator opens the Remote Desktop page.
-  novnc:
-    build: ./docker/novnc
-    restart: unless-stopped
-    volumes:
-      - vnc_tokens:/tokens
-    depends_on:
-      - sshd
-
-  # Web needs access to the vnc_tokens volume to write routing entries
-  # (already mounted via docker-compose volumes below)
-
 volumes:
   postgres_data:
   redis_data:
@@ -160,4 +143,3 @@ volumes:
   static_data:
   log_data:
   sshd_host_keys:
-  vnc_tokens:

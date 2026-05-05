@@ -10,7 +10,7 @@ Responsibilities:
   3. Send heartbeat to server every N minutes
   4. Send audio packet (with analysis results) every 3 hours
   5. Send IMMEDIATE critical alert if anomaly score exceeds threshold
-  6. Poll for remote access and open reverse SSH tunnel (SSH + VNC)
+  6. Poll for remote access and open reverse SSH tunnel
   7. Poll for operator commands and execute them
   8. Report software version on startup
 
@@ -60,12 +60,11 @@ AUDIO_FORMAT = "wav"
 # If set to "true", audio file is NOT uploaded — only analysis JSON is sent
 DISABLE_AUDIO_UPLOAD = os.environ.get("DISABLE_AUDIO_UPLOAD", "false").lower() == "true"
 
-# SSH / VNC tunnel
+# SSH tunnel
 TUNNEL_REMOTE_HOST = os.environ.get("TUNNEL_REMOTE_HOST", "")
 TUNNEL_REMOTE_PORT = int(os.environ.get("TUNNEL_REMOTE_PORT", "2222"))
 TUNNEL_KEY_PATH    = os.environ.get("TUNNEL_KEY_PATH", "/opt/pumpjack/.ssh/tunnel_key")
 LOCAL_SSH_PORT     = 22
-LOCAL_VNC_PORT     = 5900  # RealVNC server on Pi desktop OS
 
 # Trigger file: operator sends "record_now" command → edge_client picks it up
 RECORD_TRIGGER_FILE = "/tmp/pumpjack_record_now"
@@ -315,8 +314,7 @@ def send_heartbeat(diag: dict) -> dict | None:
                              json=diag, headers=_headers(), timeout=15)
         if resp.status_code == 200:
             data = resp.json()
-            log.info("Heartbeat sent OK (ssh_port=%s vnc_port=%s)",
-                     data.get("tunnel_port"), data.get("vnc_tunnel_port"))
+            log.info("Heartbeat sent OK (ssh_port=%s)", data.get("tunnel_port"))
             return data
         log.warning("Heartbeat failed: %d %s", resp.status_code, resp.text[:100])
     except requests.RequestException as e:
@@ -402,7 +400,7 @@ def report_version() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# SSH + VNC reverse tunnels
+# SSH reverse tunnel
 # ---------------------------------------------------------------------------
 
 def _open_tunnel(remote_port: int, local_port: int, label: str) -> subprocess.Popen | None:
@@ -447,15 +445,13 @@ def _open_tunnel(remote_port: int, local_port: int, label: str) -> subprocess.Po
         return None
 
 
-def open_tunnels(ssh_port: int | None, vnc_port: int | None) -> tuple[subprocess.Popen | None, subprocess.Popen | None]:
+def open_tunnels(ssh_port: int | None) -> subprocess.Popen | None:
     """
-    Open SSH and VNC reverse tunnels to the server.
+    Open SSH reverse tunnel to the server.
     Always-on: called regardless of whether an operator session exists.
-    Returns (ssh_proc, vnc_proc).
+    Returns ssh_proc.
     """
-    ssh_proc = _open_tunnel(ssh_port, LOCAL_SSH_PORT, "SSH") if ssh_port else None
-    vnc_proc = _open_tunnel(vnc_port, LOCAL_VNC_PORT, "VNC") if vnc_port else None
-    return ssh_proc, vnc_proc
+    return _open_tunnel(ssh_port, LOCAL_SSH_PORT, "SSH") if ssh_port else None
 
 
 def close_tunnel(proc: subprocess.Popen | None):
@@ -608,11 +604,9 @@ def main():
     last_command_poll_time = 0
 
     ssh_tunnel: subprocess.Popen | None = None
-    vnc_tunnel: subprocess.Popen | None = None
 
-    # Tunnel ports from server (received in heartbeat response)
+    # Tunnel port from server (received in heartbeat response)
     assigned_ssh_port: int | None = None
-    assigned_vnc_port: int | None = None
 
     while True:
         now = time.time()
@@ -624,17 +618,12 @@ def main():
             if hb_data:
                 # Server tells us our assigned tunnel ports
                 new_ssh = hb_data.get("tunnel_port")
-                new_vnc = hb_data.get("vnc_tunnel_port")
                 if new_ssh and new_ssh != assigned_ssh_port:
                     log.info("SSH tunnel port (re)assigned: %s", new_ssh)
                     # Port changed — close old tunnel so it reopens with new port
                     close_tunnel(ssh_tunnel)
                     ssh_tunnel = None
                     assigned_ssh_port = new_ssh
-                if new_vnc and new_vnc != assigned_vnc_port:
-                    close_tunnel(vnc_tunnel)
-                    vnc_tunnel = None
-                    assigned_vnc_port = new_vnc
             last_heartbeat_time = now
 
         # ── Audio packet (every 3 hours OR trigger file) ───────────────────
@@ -683,32 +672,21 @@ def main():
                 if audio_path and Path(audio_path).exists():
                     Path(audio_path).unlink(missing_ok=True)
 
-        # ── Always-on reverse tunnels (SSH + VNC) ─────────────────────────
-        # Tunnels are checked every 60 s; reopened automatically if they die.
-        # Tunnel ports are learned from the heartbeat response.
+        # ── Always-on reverse SSH tunnel ──────────────────────────────────
+        # Checked every 60 s; reopened automatically if it dies.
+        # Tunnel port is learned from the heartbeat response.
         if now - last_tunnel_check_time >= REMOTE_POLL_INTERVAL_SEC:
             # Check SSH tunnel health
             if ssh_tunnel and ssh_tunnel.poll() is not None:
                 log.info("SSH tunnel exited (rc=%d), will reopen", ssh_tunnel.returncode)
                 ssh_tunnel = None
 
-            # Check VNC tunnel health
-            if vnc_tunnel and vnc_tunnel.poll() is not None:
-                log.info("VNC tunnel exited (rc=%d), will reopen", vnc_tunnel.returncode)
-                vnc_tunnel = None
-
             # (Re)open if we have a port and tunnel is not running
             if assigned_ssh_port and not ssh_tunnel:
-                ssh_tunnel, _ = open_tunnels(assigned_ssh_port, None)
+                ssh_tunnel = open_tunnels(assigned_ssh_port)
                 log.info("SSH tunnel %s (pid=%s)",
                          "opened" if ssh_tunnel else "FAILED",
                          ssh_tunnel.pid if ssh_tunnel else "—")
-            if assigned_vnc_port and not vnc_tunnel:
-                _, vnc_tunnel = open_tunnels(None, assigned_vnc_port)
-                log.info("VNC tunnel %s (pid=%s)",
-                         "opened" if vnc_tunnel else "FAILED",
-                         vnc_tunnel.pid if vnc_tunnel else "—")
-
             if ssh_tunnel:
                 log.debug("Tunnels active: SSH pid=%d", ssh_tunnel.pid)
 
