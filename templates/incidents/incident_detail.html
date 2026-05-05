@@ -36,7 +36,7 @@
           </div>
           <div class="col-6 col-md-3">
             <div style="font-size:.72rem; color:#8b949e">Назначен</div>
-            <div style="font-size:.85rem; color:#dee2e6">{{ incident.assigned_to.get_full_name|default:incident.assigned_to.username|default:"—" }}</div>
+            <div style="font-size:.85rem; color:#dee2e6">{% if incident.assigned_to %}{{ incident.assigned_to.get_full_name|default:incident.assigned_to.username }}{% else %}—{% endif %}</div>
           </div>
           <div class="col-6 col-md-3">
             <div style="font-size:.72rem; color:#8b949e">Создан</div>
