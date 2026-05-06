@@ -1,5 +1,6 @@
 """Incident web views."""
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.shortcuts import render, get_object_or_404
 
 from .models import Incident, IncidentStatus, IncidentSeverity, IncidentType, MaintenanceTask
@@ -24,8 +25,13 @@ def incident_list(request):
         from django.db.models import Q
         qs = qs.filter(Q(title__icontains=search) | Q(device__serial_number__icontains=search))
 
+    paginator = Paginator(qs, 30)
+    page_number = request.GET.get("page", 1)
+    incidents_page = paginator.get_page(page_number)
+
     ctx = {
-        "incidents": qs[:200],
+        "incidents": incidents_page,
+        "paginator": paginator,
         "statuses": IncidentStatus.choices,
         "severities": IncidentSeverity.choices,
         "types": IncidentType.choices,

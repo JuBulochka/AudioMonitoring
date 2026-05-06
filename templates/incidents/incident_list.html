@@ -93,5 +93,42 @@
       </table>
     </div>
   </div>
+  {% if incidents.has_other_pages %}
+  <div class="card-footer py-2 px-3 d-flex align-items-center justify-content-between" style="border-top:1px solid #21262d; background:transparent">
+    <span style="font-size:.75rem; color:#8b949e">
+      Стр. {{ incidents.number }} из {{ incidents.paginator.num_pages }}
+      &nbsp;·&nbsp; всего {{ paginator.count }} инцидентов
+    </span>
+    <nav>
+      <ul class="pagination pagination-sm mb-0" style="gap:2px">
+        {% if incidents.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page=1{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}" style="font-size:.75rem">«</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ incidents.previous_page_number }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}" style="font-size:.75rem">‹</a>
+          </li>
+        {% endif %}
+        {% for num in incidents.paginator.page_range %}
+          {% if num == incidents.number %}
+            <li class="page-item active"><span class="page-link" style="font-size:.75rem">{{ num }}</span></li>
+          {% elif num >= incidents.number|add:"-2" and num <= incidents.number|add:"2" %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ num }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}" style="font-size:.75rem">{{ num }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+        {% if incidents.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ incidents.next_page_number }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}" style="font-size:.75rem">›</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ incidents.paginator.num_pages }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}" style="font-size:.75rem">»</a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
