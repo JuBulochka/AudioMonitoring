@@ -30,25 +30,25 @@
       <div class="col-6 col-md-3">
         <div class="stat-card">
           <div class="label">Регион</div>
-          <div style="font-size:.9rem; font-weight:600; color:#f0f6fc">{{ device.pump_jack.site.field.region.name }}</div>
+          <div style="font-size:.9rem; font-weight:600; color:var(--txt-primary)">{{ device.pump_jack.site.field.region.name }}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="stat-card">
           <div class="label">Месторождение / Куст</div>
-          <div style="font-size:.82rem; color:#dee2e6">{{ device.pump_jack.site.field.name }} / {{ device.pump_jack.site.name }}</div>
+          <div style="font-size:.82rem; color:var(--txt-primary)">{{ device.pump_jack.site.field.name }} / {{ device.pump_jack.site.name }}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="stat-card">
           <div class="label">Скважина</div>
-          <div style="font-size:.9rem; font-weight:600; color:#f0f6fc">№{{ device.pump_jack.well_number }}</div>
+          <div style="font-size:.9rem; font-weight:600; color:var(--txt-primary)">№{{ device.pump_jack.well_number }}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="stat-card">
           <div class="label">Прошивка / Модель</div>
-          <div style="font-size:.8rem; color:#8b949e; font-family:monospace">
+          <div style="font-size:.8rem; color:var(--txt-muted); font-family:monospace">
             {{ device.firmware_version|default:"—" }} / {{ device.model_version|default:"—" }}
           </div>
         </div>
@@ -60,22 +60,22 @@
     <div class="card mb-3">
       <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <span style="font-size:.85rem; font-weight:600"><i class="bi bi-activity me-2"></i>Состояние устройства</span>
-        <span style="font-size:.72rem; color:#8b949e">{{ latest_hb.received_at|timesince }} назад</span>
+        <span style="font-size:.72rem; color:var(--txt-muted)">{{ latest_hb.received_at|timesince }} назад</span>
       </div>
       <div class="card-body py-2">
         <div class="row g-2">
           {% with cpu_pct=latest_hb.cpu_usage %}
           <div class="col-6 col-md-3">
-            <div class="label" style="font-size:.72rem; color:#8b949e">CPU</div>
+            <div class="label" style="font-size:.72rem; color:var(--txt-muted)">CPU</div>
             <div class="progress mt-1" style="height:6px; background:#21262d">
               <div class="progress-bar {% if cpu_pct > 80 %}bg-danger{% elif cpu_pct > 60 %}bg-warning{% else %}bg-success{% endif %}"
                    style="width:{% if cpu_pct is not None %}{{ cpu_pct }}{% else %}0{% endif %}%"></div>
             </div>
-            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{% if cpu_pct is not None %}{{ cpu_pct }}%{% else %}—{% endif %}</div>
+            <div style="font-size:.78rem; color:var(--txt-primary); margin-top:2px">{% if cpu_pct is not None %}{{ cpu_pct }}%{% else %}—{% endif %}</div>
           </div>
           {% endwith %}
           <div class="col-6 col-md-3">
-            <div class="label" style="font-size:.72rem; color:#8b949e">Температура</div>
+            <div class="label" style="font-size:.72rem; color:var(--txt-muted)">Температура</div>
             <div style="font-size:1.1rem; font-weight:600;
               color:{% if latest_hb.cpu_temp > 80 %}#f85149{% elif latest_hb.cpu_temp > 65 %}#ffc107{% else %}#3fb950{% endif %}">
               {{ latest_hb.cpu_temp|default:"—" }}°C
@@ -83,22 +83,22 @@
           </div>
           {% with mem_pct=latest_hb.memory_usage_pct %}
           <div class="col-6 col-md-3">
-            <div class="label" style="font-size:.72rem; color:#8b949e">Память</div>
+            <div class="label" style="font-size:.72rem; color:var(--txt-muted)">Память</div>
             <div class="progress mt-1" style="height:6px; background:#21262d">
               <div class="progress-bar {% if mem_pct > 85 %}bg-danger{% elif mem_pct > 70 %}bg-warning{% else %}bg-info{% endif %}"
                    style="width:{% if mem_pct is not None %}{{ mem_pct }}{% else %}0{% endif %}%"></div>
             </div>
-            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{% if mem_pct is not None %}{{ mem_pct }}%{% else %}—{% endif %}</div>
+            <div style="font-size:.78rem; color:var(--txt-primary); margin-top:2px">{% if mem_pct is not None %}{{ mem_pct }}%{% else %}—{% endif %}</div>
           </div>
           {% endwith %}
           {% with disk_pct=latest_hb.disk_usage_pct %}
           <div class="col-6 col-md-3">
-            <div class="label" style="font-size:.72rem; color:#8b949e">Диск</div>
+            <div class="label" style="font-size:.72rem; color:var(--txt-muted)">Диск</div>
             <div class="progress mt-1" style="height:6px; background:#21262d">
               <div class="progress-bar {% if disk_pct > 90 %}bg-danger{% elif disk_pct > 75 %}bg-warning{% else %}bg-secondary{% endif %}"
                    style="width:{% if disk_pct is not None %}{{ disk_pct }}{% else %}0{% endif %}%"></div>
             </div>
-            <div style="font-size:.78rem; color:#dee2e6; margin-top:2px">{% if disk_pct is not None %}{{ disk_pct }}%{% else %}—{% endif %}</div>
+            <div style="font-size:.78rem; color:var(--txt-primary); margin-top:2px">{% if disk_pct is not None %}{{ disk_pct }}%{% else %}—{% endif %}</div>
           </div>
           {% endwith %}
         </div>
@@ -145,7 +145,7 @@
     <div class="card">
       <div class="card-header py-2 d-flex align-items-center justify-content-between">
         <span style="font-size:.85rem; font-weight:600"><i class="bi bi-music-note-list me-2"></i>Аудиопакеты (90 дней)</span>
-        <span style="font-size:.75rem; color:#8b949e">{{ paginator.count }} записей</span>
+        <span style="font-size:.75rem; color:var(--txt-muted)">{{ paginator.count }} записей</span>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -180,12 +180,12 @@
                       <div class="progress-bar {% if pkt.severity == 'critical' %}bg-danger{% elif pkt.severity == 'warning' %}bg-warning{% else %}bg-success{% endif %}"
                            style="width:{% if pkt.dominant_class_score %}{{ pkt.dominant_class_score|floatformat:2|default:0 }}{% else %}0{% endif %}00%"></div>
                     </div>
-                    <span style="font-size:.75rem; color:#8b949e; width:36px">
+                    <span style="font-size:.75rem; color:var(--txt-muted); width:36px">
                       {% if pkt.dominant_class_score %}{{ pkt.dominant_class_score|floatformat:2 }}{% else %}—{% endif %}
                     </span>
                   </div>
                 </td>
-                <td style="font-size:.75rem; color:#8b949e">
+                <td style="font-size:.75rem; color:var(--txt-muted)">
                   {% if pkt.duration_seconds %}{{ pkt.duration_seconds|floatformat:0 }}с{% else %}—{% endif %}
                 </td>
                 <td style="font-size:.72rem">
@@ -220,8 +220,8 @@
         </div>
       </div>
       {% if packets.has_other_pages %}
-      <div class="card-footer py-2 px-3 d-flex align-items-center justify-content-between" style="border-top:1px solid #21262d; background:transparent">
-        <span style="font-size:.75rem; color:#8b949e">
+      <div class="card-footer py-2 px-3 d-flex align-items-center justify-content-between" style="border-top:1px solid var(--border-clr); background:transparent">
+        <span style="font-size:.75rem; color:var(--txt-muted)">
           Стр. {{ packets.number }} из {{ packets.paginator.num_pages }}
           &nbsp;·&nbsp; всего {{ paginator.count }} записей
         </span>
@@ -283,11 +283,11 @@
       <div class="card-body p-0">
         {% for inc in open_incidents %}
           <a href="{% url 'incident-detail' inc.id %}" class="d-flex align-items-start gap-2 px-3 py-2 text-decoration-none border-bottom"
-             style="border-color:#21262d!important">
+             style="border-color:var(--border-clr)!important">
             <span class="sev-{{ inc.severity }} mt-1" style="font-size:.8rem"><i class="bi bi-circle-fill" style="font-size:.45rem"></i></span>
             <div style="flex:1; min-width:0">
-              <div style="font-size:.82rem; color:#f0f6fc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ inc.title }}</div>
-              <div style="font-size:.72rem; color:#8b949e">{{ inc.created_at|timesince }} назад · {{ inc.get_status_display }}</div>
+              <div style="font-size:.82rem; color:var(--txt-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ inc.title }}</div>
+              <div style="font-size:.72rem; color:var(--txt-muted)">{{ inc.created_at|timesince }} назад · {{ inc.get_status_display }}</div>
             </div>
           </a>
         {% endfor %}
@@ -302,15 +302,15 @@
       </div>
       <div class="card-body p-0">
         {% for h in status_history %}
-          <div class="px-3 py-2 border-bottom d-flex gap-2" style="border-color:#21262d!important">
+          <div class="px-3 py-2 border-bottom d-flex gap-2" style="border-color:var(--border-clr)!important">
             <div style="flex:1; min-width:0">
-              <div style="font-size:.78rem; color:#dee2e6">
+              <div style="font-size:.78rem; color:var(--txt-primary)">
                 <span class="text-muted">{{ h.previous_status|default:"—" }}</span>
                 <i class="bi bi-arrow-right mx-1" style="font-size:.65rem"></i>
                 <span class="badge badge-{{ h.new_status }}" style="font-size:.68rem">{{ h.get_new_status_display }}</span>
               </div>
-              {% if h.reason %}<div style="font-size:.72rem; color:#8b949e">{{ h.reason|truncatechars:60 }}</div>{% endif %}
-              <div style="font-size:.7rem; color:#484f58">
+              {% if h.reason %}<div style="font-size:.72rem; color:var(--txt-muted)">{{ h.reason|truncatechars:60 }}</div>{% endif %}
+              <div style="font-size:.7rem; color:var(--txt-dim)">
                 {{ h.changed_at|date:"d.m.Y H:i" }}
                 {% if h.changed_by %}· {{ h.changed_by.username }}{% endif %}
                 {% if h.is_automated %}<span class="text-muted">· авто</span>{% endif %}
@@ -333,9 +333,9 @@
       </div>
       <div class="card-body p-0">
         {% for c in comments %}
-          <div class="px-3 py-2 border-bottom" style="border-color:#21262d!important">
-            <div style="font-size:.8rem; color:#dee2e6">{{ c.text }}</div>
-            <div style="font-size:.7rem; color:#484f58">
+          <div class="px-3 py-2 border-bottom" style="border-color:var(--border-clr)!important">
+            <div style="font-size:.8rem; color:var(--txt-primary)">{{ c.text }}</div>
+            <div style="font-size:.7rem; color:var(--txt-dim)">
               {{ c.author.username|default:"?" }} · {{ c.created_at|date:"d.m.Y H:i" }}
             </div>
           </div>
@@ -353,9 +353,9 @@
       </div>
       <div class="card-body p-0">
         {% for ses in recent_sessions %}
-          <div class="px-3 py-2 border-bottom" style="border-color:#21262d!important">
-            <div style="font-size:.8rem; color:#dee2e6">{{ ses.operator.username }} · {{ ses.get_status_display }}</div>
-            <div style="font-size:.7rem; color:#484f58">{{ ses.created_at|date:"d.m.Y H:i" }}{% if ses.duration_seconds %} · {{ ses.duration_seconds }}с{% endif %}</div>
+          <div class="px-3 py-2 border-bottom" style="border-color:var(--border-clr)!important">
+            <div style="font-size:.8rem; color:var(--txt-primary)">{{ ses.operator.username }} · {{ ses.get_status_display }}</div>
+            <div style="font-size:.7rem; color:var(--txt-dim)">{{ ses.created_at|date:"d.m.Y H:i" }}{% if ses.duration_seconds %} · {{ ses.duration_seconds }}с{% endif %}</div>
           </div>
         {% endfor %}
       </div>
@@ -368,10 +368,10 @@
 <!-- Change Status Modal -->
 <div class="modal fade" id="statusModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
-    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+    <div class="modal-content">
       <div class="modal-header border-0 pb-0">
         <h6 class="modal-title">Сменить статус</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
         <select id="newStatusSelect" class="form-select form-select-sm mb-2">
@@ -390,10 +390,10 @@
 <!-- Comment Modal -->
 <div class="modal fade" id="commentModal" tabindex="-1">
   <div class="modal-dialog">
-    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+    <div class="modal-content">
       <div class="modal-header border-0 pb-0">
         <h6 class="modal-title">Добавить комментарий</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
         <textarea id="commentText" class="form-control" rows="3" placeholder="Текст комментария..."></textarea>
@@ -408,10 +408,10 @@
 
 
 <!-- Packet detail offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="packetOffcanvas" style="background:#161b22; border-left:1px solid #30363d; width:380px">
-  <div class="offcanvas-header border-bottom" style="border-color:#30363d!important">
+<div class="offcanvas offcanvas-end" tabindex="-1" id="packetOffcanvas" style="width:380px">
+  <div class="offcanvas-header border-bottom">
     <h6 class="offcanvas-title">Детали пакета</h6>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
   </div>
   <div class="offcanvas-body" id="packetOffcanvasBody"></div>
 </div>
@@ -457,43 +457,50 @@ function showPacketDetail(id, dt, cls, score, sev) {
     .then(r => r.json())
     .then(p => {
       const scores = (p.class_scores || []).sort((a,b) => b.score - a.score);
+      const _cs = getComputedStyle(document.documentElement);
+      const _muted = _cs.getPropertyValue('--txt-muted').trim();
+      const _dim   = _cs.getPropertyValue('--txt-dim').trim();
+      const _prim  = _cs.getPropertyValue('--txt-primary').trim();
+      const _border = _cs.getPropertyValue('--border-clr').trim();
+      const _warn  = _cs.getPropertyValue('--warning').trim();
+
       const scoresHtml = scores.map(s => `
         <div class="d-flex align-items-center gap-2 mb-1">
-          <div style="width:130px; font-size:.78rem; color:${s.threshold_exceeded?'#ffc107':'#8b949e'}">${s.audio_class_display}</div>
-          <div class="progress flex-grow-1" style="height:5px; background:#21262d">
+          <div style="width:130px; font-size:.78rem; color:${s.threshold_exceeded ? _warn : _muted}">${s.audio_class_display}</div>
+          <div class="progress flex-grow-1" style="height:5px;">
             <div class="progress-bar ${s.threshold_exceeded?'bg-warning':'bg-secondary'}" style="width:${(s.score*100).toFixed(1)}%"></div>
           </div>
-          <div style="width:40px; font-size:.75rem; text-align:right; color:#dee2e6">${(s.score*100).toFixed(1)}%</div>
+          <div style="width:40px; font-size:.75rem; text-align:right; color:${_prim}">${(s.score*100).toFixed(1)}%</div>
         </div>`).join('');
 
       body.innerHTML = `
         <div class="mb-3">
-          <div style="font-size:.72rem; color:#484f58">Время записи</div>
-          <div style="font-family:monospace; font-size:.85rem">${dt}</div>
+          <div style="font-size:.72rem; color:${_dim}">Время записи</div>
+          <div style="font-family:monospace; font-size:.85rem; color:${_prim}">${dt}</div>
         </div>
         <div class="mb-3">
-          <div style="font-size:.72rem; color:#484f58">Severity / Класс</div>
+          <div style="font-size:.72rem; color:${_dim}">Severity / Класс</div>
           <div><span class="sev-${p.severity}">${p.severity_display}</span> · ${p.dominant_class_display} (${(p.dominant_class_score*100).toFixed(1)}%)</div>
         </div>
         <div class="mb-3">
-          <div style="font-size:.72rem; color:#484f58 mb-1">Распределение классов</div>
+          <div style="font-size:.72rem; color:${_dim}; margin-bottom:4px">Распределение классов</div>
           <div class="mt-1">${scoresHtml || '<span class="text-muted">Нет данных</span>'}</div>
         </div>
         ${p.audio_file_url ? `
         <div class="mb-3">
-          <div style="font-size:.72rem; color:#484f58">Аудиозапись</div>
+          <div style="font-size:.72rem; color:${_dim}">Аудиозапись</div>
           <audio controls class="w-100 mt-1" preload="none">
             <source src="${p.audio_file_url}">
           </audio>
         </div>` : ''}
         <div class="mb-2">
-          <div style="font-size:.72rem; color:#484f58">CPU / Temp / Memory / Disk</div>
-          <div style="font-size:.78rem; color:#dee2e6; font-family:monospace">
+          <div style="font-size:.72rem; color:${_dim}">CPU / Temp / Memory / Disk</div>
+          <div style="font-size:.78rem; color:${_prim}; font-family:monospace">
             ${p.device_cpu_usage||'?'}% / ${p.device_cpu_temp||'?'}°C / ${p.device_memory_usage_pct||'?'}% / ${p.device_disk_usage_pct||'?'}%
           </div>
         </div>
-        <hr style="border-color:#30363d">
-        <div style="font-size:.72rem; color:#484f58">Верификация оператора</div>
+        <hr style="border-color:${_border}">
+        <div style="font-size:.72rem; color:${_dim}">Верификация оператора</div>
         <select id="opsSelect_${id}" class="form-select form-select-sm mt-1">
           <option value="reviewed" ${p.operator_status=='reviewed'?'selected':''}>Проверено</option>
           <option value="false_positive" ${p.operator_status=='false_positive'?'selected':''}>Ложное срабатывание</option>
@@ -523,6 +530,10 @@ const labels = Object.keys(chartData).map(k => classLabels[k] || k);
 const scores = Object.values(chartData).map(v => (v.avg_score * 100).toFixed(1));
 
 if (labels.length > 0) {
+  const rcs = getComputedStyle(document.documentElement);
+  const rTickClr = rcs.getPropertyValue('--txt-muted').trim();
+  const rGridClr = rcs.getPropertyValue('--border-clr').trim();
+
   new Chart(document.getElementById('classChart'), {
     type: 'radar',
     data: {
@@ -542,10 +553,10 @@ if (labels.length > 0) {
       scales: {
         r: {
           min: 0, max: 100,
-          ticks: { color: '#8b949e', font: { size: 9 }, stepSize: 25 },
-          grid: { color: '#21262d' },
-          pointLabels: { color: '#8b949e', font: { size: 10 } },
-          angleLines: { color: '#21262d' }
+          ticks: { color: rTickClr, font: { size: 9 }, stepSize: 25 },
+          grid: { color: rGridClr },
+          pointLabels: { color: rTickClr, font: { size: 10 } },
+          angleLines: { color: rGridClr }
         }
       }
     }

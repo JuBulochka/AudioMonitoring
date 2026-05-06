@@ -49,7 +49,7 @@
 <!-- Table -->
 <div class="card">
   <div class="card-header py-2 d-flex align-items-center justify-content-between">
-    <span style="font-size:.85rem; color:#8b949e">Найдено: {{ devices|length }}</span>
+    <span style="font-size:.85rem; color:var(--txt-muted)">Найдено: {{ devices|length }}</span>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -79,19 +79,19 @@
               {% endif %}
             </td>
             <td style="font-family:monospace; font-size:.82rem">
-              <a href="{% url 'device-detail' dev.id %}" class="text-info text-decoration-none">{{ dev.serial_number }}</a>
+              <a href="{% url 'device-detail' dev.id %}" class="text-decoration-none" style="color:var(--info)">{{ dev.serial_number }}</a>
             </td>
             <td style="font-size:.85rem">{{ dev.name }}</td>
-            <td style="font-size:.78rem; color:#8b949e">{{ dev.pump_jack.site.field.region.name }} / {{ dev.pump_jack.site.name }}</td>
+            <td style="font-size:.78rem; color:var(--txt-muted)">{{ dev.pump_jack.site.field.region.name }} / {{ dev.pump_jack.site.name }}</td>
             <td style="font-size:.82rem">{{ dev.pump_jack.well_number }}</td>
             <td>
               <span class="badge badge-{{ dev.status }}" style="font-size:.7rem">{{ dev.get_status_display }}</span>
             </td>
-            <td style="font-size:.75rem; color:#8b949e">{{ dev.firmware_version|default:"—" }}</td>
-            <td style="font-size:.75rem; color:#8b949e">
+            <td style="font-size:.75rem; color:var(--txt-muted)">{{ dev.firmware_version|default:"—" }}</td>
+            <td style="font-size:.75rem; color:var(--txt-muted)">
               {% if dev.last_packet_at %}{{ dev.last_packet_at|timesince }} назад{% else %}—{% endif %}
             </td>
-            <td style="font-size:.75rem; color:#8b949e">
+            <td style="font-size:.75rem; color:var(--txt-muted)">
               {% if dev.last_heartbeat_at %}{{ dev.last_heartbeat_at|timesince }} назад{% else %}—{% endif %}
             </td>
             <td>

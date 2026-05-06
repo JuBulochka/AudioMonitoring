@@ -8,25 +8,25 @@
   <div class="col-6 col-xl-3">
     <div class="stat-card">
       <div class="label"><i class="bi bi-cpu me-1"></i>Всего устройств</div>
-      <div class="value text-white">{{ total_devices }}</div>
+      <div class="value">{{ total_devices }}</div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-card">
       <div class="label"><i class="bi bi-wifi me-1"></i>Онлайн</div>
-      <div class="value" style="color:#3fb950">{{ online_devices }}</div>
+      <div class="value" style="color:var(--online-clr)">{{ online_devices }}</div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-card">
       <div class="label"><i class="bi bi-wifi-off me-1"></i>Оффлайн</div>
-      <div class="value" style="color:#8b949e">{{ offline_devices }}</div>
+      <div class="value" style="color:var(--offline-clr)">{{ offline_devices }}</div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-card">
       <div class="label"><i class="bi bi-exclamation-triangle me-1"></i>Открытых инцидентов</div>
-      <div class="value" style="color:#f85149">{{ open_incidents }}</div>
+      <div class="value" style="color:var(--danger)">{{ open_incidents }}</div>
     </div>
   </div>
 </div>
@@ -55,17 +55,17 @@
                 <span class="sev-{{ inc.severity }}"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> {{ inc.get_severity_display }}</span>
               </td>
               <td>
-                <a href="{% url 'device-detail' inc.device.id %}" class="text-decoration-none text-info" style="font-size:.82rem">
+                <a href="{% url 'device-detail' inc.device.id %}" class="text-decoration-none" style="font-size:.82rem;color:var(--info)">
                   {{ inc.device.serial_number }}
                 </a>
               </td>
               <td style="font-size:.82rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
-                <a href="{% url 'incident-detail' inc.id %}" class="text-decoration-none text-light">{{ inc.title }}</a>
+                <a href="{% url 'incident-detail' inc.id %}" class="text-decoration-none" style="color:var(--txt-primary)">{{ inc.title }}</a>
               </td>
               <td>
                 <span class="badge badge-{{ inc.status }}" style="font-size:.7rem">{{ inc.get_status_display }}</span>
               </td>
-              <td style="font-size:.75rem; color:#8b949e; white-space:nowrap">{{ inc.created_at|timesince }} назад</td>
+              <td style="font-size:.75rem; color:var(--txt-muted); white-space:nowrap">{{ inc.created_at|timesince }} назад</td>
             </tr>
           {% empty %}
             <tr><td colspan="5" class="text-center text-muted py-3" style="font-size:.85rem">Инцидентов нет</td></tr>
@@ -85,7 +85,7 @@
       </div>
       <div class="card-body p-0">
         {% for notif in recent_notifications %}
-          <div class="d-flex align-items-start gap-2 px-3 py-2 border-bottom" style="border-color:#21262d!important">
+          <div class="d-flex align-items-start gap-2 px-3 py-2 border-bottom" style="border-color:var(--border-clr)!important">
             {% if notif.alert.severity == 'critical' %}
               <i class="bi bi-exclamation-circle-fill text-danger mt-1" style="font-size:.9rem"></i>
             {% elif notif.alert.severity == 'warning' %}
@@ -94,10 +94,10 @@
               <i class="bi bi-info-circle-fill text-info mt-1" style="font-size:.9rem"></i>
             {% endif %}
             <div style="flex:1; min-width:0">
-              <div style="font-size:.82rem; color:{% if not notif.is_read %}#f0f6fc{% else %}#8b949e{% endif %}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+              <div style="font-size:.82rem; color:{% if not notif.is_read %}var(--txt-primary){% else %}var(--txt-muted){% endif %}; font-weight:{% if not notif.is_read %}600{% else %}400{% endif %}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
                 {{ notif.alert.title }}
               </div>
-              <div style="font-size:.72rem; color:#484f58">{{ notif.created_at|timesince }} назад</div>
+              <div style="font-size:.72rem; color:var(--txt-dim)">{{ notif.created_at|timesince }} назад</div>
             </div>
           </div>
         {% empty %}
@@ -130,6 +130,12 @@ fetch('/api/v1/dashboard/summary/')
     const totals = hourly.map(h => h.total);
     const anomalies = hourly.map(h => h.anomaly);
 
+    // Theme-aware chart colors
+    const cs = getComputedStyle(document.documentElement);
+    const tickClr  = cs.getPropertyValue('--txt-muted').trim();
+    const dimClr   = cs.getPropertyValue('--txt-dim').trim();
+    const gridClr  = cs.getPropertyValue('--border-clr').trim();
+
     new Chart(document.getElementById('activityChart'), {
       type: 'bar',
       data: {
@@ -142,10 +148,10 @@ fetch('/api/v1/dashboard/summary/')
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        plugins: { legend: { labels: { color: '#8b949e', font: { size: 11 } } } },
+        plugins: { legend: { labels: { color: tickClr, font: { size: 11 } } } },
         scales: {
-          x: { ticks: { color: '#484f58', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#21262d' } },
-          y: { ticks: { color: '#8b949e', font: { size: 10 } }, grid: { color: '#21262d' } }
+          x: { ticks: { color: dimClr, maxTicksLimit: 8, font: { size: 10 } }, grid: { color: gridClr } },
+          y: { ticks: { color: tickClr, font: { size: 10 } }, grid: { color: gridClr } }
         }
       }
     });

@@ -62,22 +62,22 @@
                 {{ inc.get_severity_display }}
               </span>
             </td>
-            <td style="font-size:.78rem; color:#8b949e">{{ inc.get_incident_type_display }}</td>
+            <td style="font-size:.78rem; color:var(--txt-muted)">{{ inc.get_incident_type_display }}</td>
             <td>
-              <a href="{% url 'device-detail' inc.device.id %}" class="text-info text-decoration-none" style="font-size:.82rem; font-family:monospace">
+              <a href="{% url 'device-detail' inc.device.id %}" class="text-decoration-none" style="font-size:.82rem; font-family:monospace; color:var(--info)">
                 {{ inc.device.serial_number }}
               </a>
             </td>
             <td style="font-size:.82rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
-              <a href="{% url 'incident-detail' inc.id %}" class="text-light text-decoration-none">{{ inc.title }}</a>
+              <a href="{% url 'incident-detail' inc.id %}" class="text-decoration-none" style="color:var(--txt-primary)">{{ inc.title }}</a>
             </td>
             <td>
               <span class="badge badge-{{ inc.status }}" style="font-size:.7rem">{{ inc.get_status_display }}</span>
             </td>
-            <td style="font-size:.78rem; color:#8b949e">
+            <td style="font-size:.78rem; color:var(--txt-muted)">
               {{ inc.assigned_to.username|default:"—" }}
             </td>
-            <td style="font-size:.75rem; color:#8b949e; white-space:nowrap">
+            <td style="font-size:.75rem; color:var(--txt-muted); white-space:nowrap">
               {{ inc.created_at|date:"d.m.Y H:i" }}
             </td>
             <td>
@@ -94,8 +94,8 @@
     </div>
   </div>
   {% if incidents.has_other_pages %}
-  <div class="card-footer py-2 px-3 d-flex align-items-center justify-content-between" style="border-top:1px solid #21262d; background:transparent">
-    <span style="font-size:.75rem; color:#8b949e">
+  <div class="card-footer py-2 px-3 d-flex align-items-center justify-content-between" style="border-top:1px solid var(--border-clr); background:transparent">
+    <span style="font-size:.75rem; color:var(--txt-muted)">
       Стр. {{ incidents.number }} из {{ incidents.paginator.num_pages }}
       &nbsp;·&nbsp; всего {{ paginator.count }} инцидентов
     </span>

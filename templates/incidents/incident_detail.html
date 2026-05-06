@@ -25,39 +25,39 @@
       <div class="card-body py-3">
         <div class="row g-3">
           <div class="col-6 col-md-3">
-            <div style="font-size:.72rem; color:#8b949e">Устройство</div>
-            <a href="{% url 'device-detail' incident.device.id %}" class="text-info text-decoration-none" style="font-family:monospace; font-size:.88rem">
+            <div style="font-size:.72rem; color:var(--txt-muted)">Устройство</div>
+            <a href="{% url 'device-detail' incident.device.id %}" class="text-decoration-none" style="font-family:monospace; font-size:.88rem; color:var(--info)">
               {{ incident.device.serial_number }}
             </a>
           </div>
           <div class="col-6 col-md-3">
-            <div style="font-size:.72rem; color:#8b949e">Тип инцидента</div>
-            <div style="font-size:.85rem; color:#dee2e6">{{ incident.get_incident_type_display }}</div>
+            <div style="font-size:.72rem; color:var(--txt-muted)">Тип инцидента</div>
+            <div style="font-size:.85rem; color:var(--txt-primary)">{{ incident.get_incident_type_display }}</div>
           </div>
           <div class="col-6 col-md-3">
-            <div style="font-size:.72rem; color:#8b949e">Назначен</div>
-            <div style="font-size:.85rem; color:#dee2e6">{% if incident.assigned_to %}{{ incident.assigned_to.get_full_name|default:incident.assigned_to.username }}{% else %}—{% endif %}</div>
+            <div style="font-size:.72rem; color:var(--txt-muted)">Назначен</div>
+            <div style="font-size:.85rem; color:var(--txt-primary)">{% if incident.assigned_to %}{{ incident.assigned_to.get_full_name|default:incident.assigned_to.username }}{% else %}—{% endif %}</div>
           </div>
           <div class="col-6 col-md-3">
-            <div style="font-size:.72rem; color:#8b949e">Создан</div>
-            <div style="font-size:.85rem; color:#dee2e6">{{ incident.created_at|date:"d.m.Y H:i" }}</div>
+            <div style="font-size:.72rem; color:var(--txt-muted)">Создан</div>
+            <div style="font-size:.85rem; color:var(--txt-primary)">{{ incident.created_at|date:"d.m.Y H:i" }}</div>
           </div>
         </div>
 
         {% if incident.description %}
-        <hr style="border-color:#30363d; margin:1rem 0 .75rem">
-        <div style="font-size:.85rem; color:#dee2e6; line-height:1.6">{{ incident.description }}</div>
+        <hr style="border-color:var(--border-clr); margin:1rem 0 .75rem">
+        <div style="font-size:.85rem; color:var(--txt-primary); line-height:1.6">{{ incident.description }}</div>
         {% endif %}
 
         {% if incident.trigger_class %}
         <div class="mt-2 d-flex align-items-center gap-2" style="font-size:.8rem">
-          <span style="color:#8b949e">Триггер:</span>
+          <span style="color:var(--txt-muted)">Триггер:</span>
           <span class="sev-{{ incident.severity }}">{{ incident.trigger_class }}</span>
           {% if incident.trigger_score %}
-          <div class="progress" style="height:5px; width:80px; background:#21262d">
+          <div class="progress" style="height:5px; width:80px;">
             <div class="progress-bar bg-warning" style="width:{{ incident.trigger_score|floatformat:2 }}00%"></div>
           </div>
-          <span style="color:#8b949e">{{ incident.trigger_score|floatformat:3 }}</span>
+          <span style="color:var(--txt-muted)">{{ incident.trigger_score|floatformat:3 }}</span>
           {% endif %}
         </div>
         {% endif %}
@@ -69,7 +69,7 @@
     <div class="card mb-3">
       <div class="card-header py-2">
         <span style="font-size:.85rem; font-weight:600"><i class="bi bi-music-note me-2"></i>Аудиозапись-триггер</span>
-        <span style="font-size:.72rem; color:#8b949e; float:right">{{ incident.trigger_packet.recorded_at|date:"d.m.Y H:i" }}</span>
+        <span style="font-size:.72rem; color:var(--txt-muted); float:right">{{ incident.trigger_packet.recorded_at|date:"d.m.Y H:i" }}</span>
       </div>
       <div class="card-body py-3">
         <audio controls class="w-100" preload="none">
@@ -87,17 +87,17 @@
       </div>
       <div class="card-body p-0">
         {% for comment in comments %}
-        <div class="d-flex gap-3 px-3 py-3 border-bottom" style="border-color:#21262d!important">
-          <div style="width:32px; height:32px; border-radius:50%; background:#21262d; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.75rem; color:#8b949e; font-weight:600">
+        <div class="d-flex gap-3 px-3 py-3 border-bottom" style="border-color:var(--border-clr)!important">
+          <div style="width:32px; height:32px; border-radius:50%; background:var(--bg-card-header); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.75rem; color:var(--txt-muted); font-weight:600">
             {% if comment.is_system %}<i class="bi bi-robot"></i>{% else %}{{ comment.author.username|first|upper }}{% endif %}
           </div>
           <div style="flex:1; min-width:0">
-            <div style="font-size:.78rem; color:#8b949e; margin-bottom:3px">
-              {% if comment.is_system %}<span style="color:#484f58">Система</span>
+            <div style="font-size:.78rem; color:var(--txt-muted); margin-bottom:3px">
+              {% if comment.is_system %}<span style="color:var(--txt-dim)">Система</span>
               {% else %}{{ comment.author.get_full_name|default:comment.author.username }}{% endif %}
               · {{ comment.created_at|date:"d.m.Y H:i" }}
             </div>
-            <div style="font-size:.85rem; color:{% if comment.is_system %}#8b949e{% else %}#dee2e6{% endif %}; line-height:1.5">
+            <div style="font-size:.85rem; color:{% if comment.is_system %}var(--txt-muted){% else %}var(--txt-primary){% endif %}; line-height:1.5">
               {{ comment.text }}
             </div>
           </div>
@@ -129,12 +129,12 @@
       </div>
       <div class="card-body p-0">
         {% for task in tasks %}
-        <div class="px-3 py-2 border-bottom" style="border-color:#21262d!important">
+        <div class="px-3 py-2 border-bottom" style="border-color:var(--border-clr)!important">
           <div class="d-flex justify-content-between">
-            <span style="font-size:.82rem; color:#dee2e6">{{ task.title }}</span>
+            <span style="font-size:.82rem; color:var(--txt-primary)">{{ task.title }}</span>
             <span class="badge bg-secondary" style="font-size:.65rem">{{ task.get_status_display }}</span>
           </div>
-          <div style="font-size:.72rem; color:#8b949e">
+          <div style="font-size:.72rem; color:var(--txt-muted)">
             {{ task.get_priority_display }}
             {% if task.assigned_to %} · {{ task.assigned_to.username }}{% endif %}
             {% if task.scheduled_date %} · {{ task.scheduled_date|date:"d.m.Y" }}{% endif %}
@@ -148,14 +148,14 @@
 
     <!-- Resolution -->
     {% if incident.resolved_at %}
-    <div class="card mb-3" style="border-color:#238636">
-      <div class="card-header py-2" style="background:#0d2b1a">
-        <span style="font-size:.85rem; font-weight:600; color:#3fb950"><i class="bi bi-check-circle me-2"></i>Устранено</span>
+    <div class="card mb-3" style="border-color:var(--success)">
+      <div class="card-header py-2" style="background:rgba(26,127,55,.1)">
+        <span style="font-size:.85rem; font-weight:600; color:var(--success)"><i class="bi bi-check-circle me-2"></i>Устранено</span>
       </div>
       <div class="card-body py-2 px-3">
-        <div style="font-size:.78rem; color:#8b949e">{{ incident.resolved_at|date:"d.m.Y H:i" }}</div>
-        {% if incident.resolved_by %}<div style="font-size:.78rem">{{ incident.resolved_by.get_full_name|default:incident.resolved_by.username }}</div>{% endif %}
-        {% if incident.resolution_notes %}<div style="font-size:.82rem; color:#dee2e6; margin-top:.4rem">{{ incident.resolution_notes }}</div>{% endif %}
+        <div style="font-size:.78rem; color:var(--txt-muted)">{{ incident.resolved_at|date:"d.m.Y H:i" }}</div>
+        {% if incident.resolved_by %}<div style="font-size:.78rem; color:var(--txt-primary)">{{ incident.resolved_by.get_full_name|default:incident.resolved_by.username }}</div>{% endif %}
+        {% if incident.resolution_notes %}<div style="font-size:.82rem; color:var(--txt-primary); margin-top:.4rem">{{ incident.resolution_notes }}</div>{% endif %}
       </div>
     </div>
     {% endif %}
@@ -186,10 +186,10 @@
 <!-- Status modal -->
 <div class="modal fade" id="statusModal" tabindex="-1">
   <div class="modal-dialog">
-    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+    <div class="modal-content">
       <div class="modal-header border-0 pb-0">
         <h6 class="modal-title">Изменить статус инцидента</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
         <div class="mb-2">
@@ -218,10 +218,10 @@
 <!-- Task modal -->
 <div class="modal fade" id="taskModal" tabindex="-1">
   <div class="modal-dialog">
-    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+    <div class="modal-content">
       <div class="modal-header border-0 pb-0">
         <h6 class="modal-title">Добавить задачу обслуживания</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
         <input type="text" id="taskTitle" class="form-control form-control-sm mb-2" placeholder="Название задачи">

@@ -102,49 +102,49 @@
             </td>
             <td>
               <a href="{% url 'device-detail' task.device.id %}"
-                 class="text-info text-decoration-none"
-                 style="font-family:monospace; font-size:.8rem">
+                 class="text-decoration-none"
+                 style="font-family:monospace; font-size:.8rem; color:var(--info)">
                 {{ task.device.serial_number }}
               </a>
             </td>
             <td>
-              <div style="font-size:.82rem; color:#dee2e6; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+              <div style="font-size:.82rem; color:var(--txt-primary); max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
                 {{ task.title }}
               </div>
               {% if task.description %}
-              <div style="font-size:.7rem; color:#8b949e; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+              <div style="font-size:.7rem; color:var(--txt-muted); max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
                 {{ task.description }}
               </div>
               {% endif %}
               {% if task.incident %}
               <a href="{% url 'incident-detail' task.incident.id %}"
-                 style="font-size:.68rem; color:#8b949e">
+                 style="font-size:.68rem; color:var(--txt-muted)">
                 <i class="bi bi-link-45deg"></i>{{ task.incident.title|truncatechars:30 }}
               </a>
               {% endif %}
             </td>
             <td>
               <select class="form-select form-select-sm"
-                      style="font-size:.72rem; padding:2px 6px; background:#21262d; border-color:#30363d; color:#c9d1d9; width:auto"
+                      style="font-size:.72rem; padding:2px 6px; width:auto"
                       onchange="changeStatus('{{ task.id }}', this.value, this)">
                 {% for val,label in statuses %}
                   <option value="{{ val }}" {% if task.status == val %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
               </select>
             </td>
-            <td style="font-size:.78rem; color:#8b949e">
+            <td style="font-size:.78rem; color:var(--txt-muted)">
               {{ task.assigned_to.username|default:"—" }}
             </td>
-            <td style="font-size:.74rem; color:#8b949e; white-space:nowrap">
+            <td style="font-size:.74rem; color:var(--txt-muted); white-space:nowrap">
               {% if task.scheduled_date %}{{ task.scheduled_date|date:"d.m.Y" }}{% else %}—{% endif %}
             </td>
-            <td style="font-size:.72rem; color:#8b949e; white-space:nowrap">
+            <td style="font-size:.72rem; color:var(--txt-muted); white-space:nowrap">
               {{ task.created_at|date:"d.m.Y" }}
             </td>
             <td class="text-end pe-3">
               {% if task.status != 'done' and task.status != 'cancelled' %}
               <button class="btn btn-sm py-0 px-2"
-                      style="font-size:.7rem; border:1px solid #238636; color:#3fb950"
+                      style="font-size:.7rem; border:1px solid var(--success); color:var(--success)"
                       onclick="markDone('{{ task.id }}')"
                       title="Отметить выполненным">
                 <i class="bi bi-check2"></i>
@@ -168,10 +168,10 @@
 <!-- ── Модальное окно создания ──────────────────────────────────────────── -->
 <div class="modal fade" id="createModal" tabindex="-1">
   <div class="modal-dialog">
-    <div class="modal-content" style="background:#161b22; border:1px solid #30363d">
+    <div class="modal-content">
       <div class="modal-header border-0 pb-0">
         <h6 class="modal-title"><i class="bi bi-tools me-2"></i>Новая задача обслуживания</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
 
@@ -227,12 +227,12 @@
 <!-- ── Модальное окно «Выполнено» ───────────────────────────────────────── -->
 <div class="modal fade" id="doneModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
-    <div class="modal-content" style="background:#161b22; border:1px solid #238636">
+    <div class="modal-content" style="border-color:var(--success)!important">
       <div class="modal-header border-0 pb-0">
         <h6 class="modal-title" style="font-size:.85rem">
           <i class="bi bi-check-circle-fill text-success me-1"></i>Задача выполнена
         </h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
         <textarea id="done-notes" class="form-control form-control-sm" rows="3"
@@ -268,7 +268,7 @@ function changeStatus(taskId, newStatus, selectEl) {
       const row = document.getElementById('task-row-' + taskId);
       if (row) {
         row.style.transition = 'background .3s';
-        row.style.background = '#0d2b1a';
+        row.style.background = 'rgba(26,127,55,.12)';
         setTimeout(() => { row.style.background = ''; }, 800);
       }
       selectEl.dataset.orig = newStatus;
