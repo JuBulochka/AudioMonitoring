@@ -16,6 +16,15 @@ python manage.py migrate --noinput
 echo "==> Collecting static files..."
 python manage.py collectstatic --noinput
 
+echo "==> Copying React build to staticfiles..."
+if [ -d "/app/frontend/dist" ]; then
+    mkdir -p /app/staticfiles/react
+    cp -rf /app/frontend/dist/. /app/staticfiles/react/
+    echo "==> React build copied."
+else
+    echo "==> WARNING: /app/frontend/dist not found. Run 'npm run build' in frontend/."
+fi
+
 echo "==> Creating superuser if not exists..."
 python manage.py shell -c "
 from apps.users.models import User

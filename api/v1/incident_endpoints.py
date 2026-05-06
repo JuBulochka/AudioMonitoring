@@ -11,34 +11,47 @@ from apps.common.pagination import StandardResultsSetPagination
 from apps.common.permissions import IsOperatorOrAbove
 
 
+# ── Nested reference serializers ───────────────────────────────────────────────
+
+class DeviceRefSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    serial_number = serializers.CharField()
+    name = serializers.CharField()
+
+
+class UserRefSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    username = serializers.CharField()
+    full_name = serializers.SerializerMethodField()
+
+    def get_full_name(self, obj):
+        return obj.get_full_name() or obj.username
+
+
+# ── Incident serializer ────────────────────────────────────────────────────────
+
 class IncidentSerializer(serializers.ModelSerializer):
-    device_serial = serializers.CharField(source="device.serial_number", read_only=True)
-    device_name = serializers.CharField(source="device.name", read_only=True)
+    device = DeviceRefSerializer(read_only=True)
+    assigned_to = UserRefSerializer(read_only=True, allow_null=True)
     severity_display = serializers.CharField(source="get_severity_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     incident_type_display = serializers.CharField(source="get_incident_type_display", read_only=True)
-    assigned_to_name = serializers.SerializerMethodField()
     comment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Incident
         fields = [
-            "id", "device", "device_serial", "device_name",
+            "id", "device",
             "incident_type", "incident_type_display",
             "severity", "severity_display",
             "status", "status_display",
             "title", "description",
             "trigger_class", "trigger_score",
-            "assigned_to", "assigned_to_name",
+            "assigned_to",
             "resolution_notes", "resolved_at",
             "created_at", "updated_at",
             "comment_count",
         ]
-
-    def get_assigned_to_name(self, obj):
-        if obj.assigned_to:
-            return obj.assigned_to.get_full_name() or obj.assigned_to.username
-        return None
 
     def get_comment_count(self, obj):
         return obj.comments.count()
@@ -156,6 +169,7 @@ class IncidentStatusUpdateView(APIView):
 class IncidentCommentsView(generics.ListCreateAPIView):
     serializer_class = IncidentCommentSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None  # comments are always a short list
 
     def get_queryset(self):
         return IncidentComment.objects.filter(incident_id=self.kwargs["id"]).select_related("author")

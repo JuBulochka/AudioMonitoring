@@ -33,6 +33,17 @@ jobs:
             echo "==> Checking changed files..."
             CHANGED=$(git diff HEAD~1 HEAD --name-only)
 
+            # Build React frontend if frontend files changed
+            if echo "$CHANGED" | grep -qE '^frontend/'; then
+              echo "==> Building React frontend..."
+              docker run --rm \
+                -v $(pwd)/frontend:/app \
+                -w /app \
+                node:20-alpine \
+                sh -c "npm ci --prefer-offline && npm run build"
+              echo "==> React frontend built."
+            fi
+
             # Rebuild ml-service only if its files changed (TF build is slow)
             if echo "$CHANGED" | grep -qE 'ml_service/'; then
               echo "==> Rebuilding ml-service (may take 5-10 min for TensorFlow)..."
@@ -51,7 +62,7 @@ jobs:
             echo "==> Running migrations..."
             docker compose exec -T web python manage.py migrate --noinput
 
-            echo "==> Collecting static files..."
+            echo "==> Collecting static files + React..."
             docker compose exec -T web python manage.py collectstatic --noinput
 
             echo "==> Deploy complete!"
