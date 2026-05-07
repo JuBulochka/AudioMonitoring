@@ -6,27 +6,22 @@ from django.contrib import messages
 
 from .models import RemoteAccessSession, COMMAND_CATALOG
 
-# Session flag key — per device, expires after 1 hour
-_SESSION_KEY = "ra_verified_{device_id}"
-_SESSION_TS_KEY = "ra_verified_ts_{device_id}"
-_VERIFY_TTL = 3600  # seconds
+# One-time token key — set by verify_access, consumed (deleted) by terminal/commands
+_TOKEN_KEY = "ra_token_{device_id}"
 
 
-def _is_verified(request, device_id):
-    """Check if the current session has a valid remote-access verification for this device."""
-    key = _SESSION_KEY.format(device_id=device_id)
-    ts_key = _SESSION_TS_KEY.format(device_id=device_id)
-    if not request.session.get(key):
-        return False
-    ts = request.session.get(ts_key, 0)
-    return (timezone.now().timestamp() - ts) < _VERIFY_TTL
+def _consume_token(request, device_id):
+    """Return True and delete the token if a valid one exists for this device."""
+    key = _TOKEN_KEY.format(device_id=device_id)
+    token = request.session.pop(key, None)
+    return bool(token)
 
 
-def _set_verified(request, device_id):
-    key = _SESSION_KEY.format(device_id=device_id)
-    ts_key = _SESSION_TS_KEY.format(device_id=device_id)
-    request.session[key] = True
-    request.session[ts_key] = timezone.now().timestamp()
+def _issue_token(request, device_id):
+    """Store a one-time access token in session for this device."""
+    import uuid
+    key = _TOKEN_KEY.format(device_id=device_id)
+    request.session[key] = str(uuid.uuid4())
 
 
 @login_required
@@ -50,8 +45,7 @@ def verify_access(request, device_id):
     if not next_url.startswith("/"):
         next_url = ""
 
-    if _is_verified(request, device_id):
-        return redirect(next_url or "remote-access-log")
+    # No caching — always show the form on fresh entry
 
     error = ""
 
@@ -79,7 +73,7 @@ def verify_access(request, device_id):
                 break
 
         if verified:
-            _set_verified(request, device_id)
+            _issue_token(request, device_id)
             from apps.common.models import AuditLog
             AuditLog.objects.create(
                 user=request.user,
@@ -108,9 +102,12 @@ def verify_access(request, device_id):
     })
 
 
-def _require_verified(request, device_id, next_url):
-    """Return a redirect to verification page if not yet verified, else None."""
-    if not _is_verified(request, device_id):
+def _require_token(request, device_id, next_url):
+    """
+    Consume the one-time token. If missing → redirect to verify page.
+    Returns a redirect response or None (if token was valid and consumed).
+    """
+    if not _consume_token(request, device_id):
         from django.urls import reverse
         url = reverse("remote-verify", kwargs={"device_id": device_id})
         return redirect(f"{url}?next={next_url}")
@@ -167,9 +164,9 @@ def terminal(request, device_id):
         id=device_id, is_active=True,
     )
 
-    # ── Security gate ────────────────────────────────────────────────────────
+    # ── Security gate (one-time token, no caching) ───────────────────────────
     next_url = reverse("remote-terminal", kwargs={"device_id": device_id})
-    redir = _require_verified(request, device_id, next_url)
+    redir = _require_token(request, device_id, next_url)
     if redir:
         return redir
 
@@ -197,9 +194,9 @@ def commands(request, device_id):
         id=device_id, is_active=True,
     )
 
-    # ── Security gate ────────────────────────────────────────────────────────
+    # ── Security gate (one-time token, no caching) ───────────────────────────
     next_url = reverse("remote-commands", kwargs={"device_id": device_id})
-    redir = _require_verified(request, device_id, next_url)
+    redir = _require_token(request, device_id, next_url)
     if redir:
         return redir
 
