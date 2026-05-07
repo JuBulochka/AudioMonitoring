@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ device.serial_number }} — PumpJack Monitor{% endblock %}
+{% block title %}{{ device.serial_number }} — АСУТП Мониторинг{% endblock %}
 {% block page_title %}
   {% if device.is_online %}<span class="online-dot me-2"></span>{% else %}<span class="offline-dot me-2"></span>{% endif %}
   {{ device.name }}
