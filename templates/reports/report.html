@@ -2,12 +2,11 @@
 {% load static %}
 
 {% block title %}Отчёты — АСУТП Мониторинг{% endblock %}
-
 {% block page_title %}Отчёты{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-xl-5 col-lg-7 col-md-9">
+  <div class="col-xl-6 col-lg-8 col-md-10">
 
     <!-- Generator card -->
     <div class="card mb-3">
@@ -16,29 +15,95 @@
         <span class="fw-semibold">Генерация PDF-отчёта</span>
       </div>
       <div class="card-body">
-        <p style="color:var(--txt-muted);font-size:.875rem;margin-bottom:1.25rem">
-          Выберите период — система сформирует и скачает PDF-отчёт со статистикой
-          устройств, инцидентов и аудиоаномалий.
+        <p style="color:var(--txt-muted);font-size:.875rem;margin-bottom:1.5rem">
+          Выберите период и при необходимости ограничьте выборку по региону, месторождению,
+          кусту скважин или конкретному устройству.
         </p>
 
         <form id="reportForm" method="get" action="{% url 'report-pdf' %}">
+
+          <!-- Period -->
           <div class="mb-4">
-            <label class="form-label fw-medium" style="font-size:.85rem">
-              Период отчёта
-            </label>
+            <label class="form-label fw-medium" style="font-size:.85rem">Период отчёта</label>
             <div class="d-flex flex-wrap gap-2">
               {% for val, label in periods %}
               <div>
                 <input type="radio" class="btn-check" name="period"
                        id="period_{{ val }}" value="{{ val }}"
-                       {% if val == '7' %}checked{% endif %}
-                       autocomplete="off">
-                <label class="btn btn-outline-secondary px-4" for="period_{{ val }}">
-                  {{ label }}
-                </label>
+                       {% if val == '7' %}checked{% endif %} autocomplete="off">
+                <label class="btn btn-outline-secondary px-4" for="period_{{ val }}">{{ label }}</label>
               </div>
               {% endfor %}
             </div>
+          </div>
+
+          <hr style="border-color:var(--border-clr);margin:0 0 1.25rem">
+
+          <!-- Filters -->
+          <div class="mb-3">
+            <label class="form-label fw-medium" style="font-size:.85rem">
+              Выборка <span style="color:var(--txt-muted);font-weight:400">(необязательно)</span>
+            </label>
+
+            <!-- Region -->
+            <div class="mb-2">
+              <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Регион</label>
+              <select class="form-select form-select-sm" id="sel_region" name="region_id">
+                <option value="">— Все регионы</option>
+                {% for r in regions %}
+                <option value="{{ r.id }}">{{ r.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Field -->
+            <div class="mb-2">
+              <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Месторождение</label>
+              <select class="form-select form-select-sm" id="sel_field" name="field_id">
+                <option value="">— Все месторождения</option>
+                {% for f in fields %}
+                <option value="{{ f.id }}" data-region="{{ f.region_id }}">{{ f.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Site -->
+            <div class="mb-2">
+              <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Куст скважин</label>
+              <select class="form-select form-select-sm" id="sel_site" name="site_id">
+                <option value="">— Все кусты</option>
+                {% for s in sites %}
+                <option value="{{ s.id }}" data-field="{{ s.field_id }}">{{ s.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Device -->
+            <div class="mb-0">
+              <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Устройство</label>
+              <select class="form-select form-select-sm" id="sel_device" name="device_id">
+                <option value="">— Все устройства</option>
+                {% for d in devices %}
+                <option value="{{ d.id }}" data-site="{{ d.site_id }}">
+                  {{ d.serial_number }}{% if d.name %} — {{ d.name }}{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Selected scope badge -->
+          <div id="scopeBadge" class="mb-3" style="display:none">
+            <span class="badge rounded-pill"
+                  style="background:var(--bg-card-header);color:var(--txt-muted);
+                         border:1px solid var(--border-clr);font-size:.78rem;font-weight:400;padding:.35em .75em">
+              <i class="bi bi-funnel me-1"></i>
+              <span id="scopeText"></span>
+            </span>
+            <button type="button" id="clearFilters" class="btn btn-link btn-sm p-0 ms-2"
+                    style="font-size:.78rem;color:var(--txt-muted)">
+              Сбросить
+            </button>
           </div>
 
           <button type="submit" id="downloadBtn"
@@ -51,7 +116,7 @@
       </div>
     </div>
 
-    <!-- Contents info card -->
+    <!-- Info card -->
     <div class="card">
       <div class="card-body" style="font-size:.85rem">
         <div class="fw-semibold mb-2 d-flex align-items-center gap-2">
@@ -64,11 +129,6 @@
           <li>Аудиоаномалии по типу за выбранный период</li>
           <li>Список инцидентов за выбранный период (до 50 записей)</li>
         </ul>
-        <hr style="border-color:var(--border-clr);margin:1rem 0">
-        <div class="d-flex align-items-center gap-2" style="color:var(--txt-muted)">
-          <i class="bi bi-info-circle"></i>
-          <span>Отчёт формируется в реальном времени и содержит актуальные данные на момент скачивания.</span>
-        </div>
       </div>
     </div>
 
@@ -79,6 +139,111 @@
 {% block extra_scripts %}
 <script>
 (function () {
+  // ── Raw data from Django ──────────────────────────────────────────
+  const FIELDS  = {{ fields_json|safe }};
+  const SITES   = {{ sites_json|safe }};
+  const DEVICES = {{ devices_json|safe }};
+
+  const selRegion = document.getElementById('sel_region');
+  const selField  = document.getElementById('sel_field');
+  const selSite   = document.getElementById('sel_site');
+  const selDevice = document.getElementById('sel_device');
+
+  // Store all original options (except the "all" placeholder)
+  const allFieldOpts  = Array.from(selField.options).slice(1);
+  const allSiteOpts   = Array.from(selSite.options).slice(1);
+  const allDeviceOpts = Array.from(selDevice.options).slice(1);
+
+  function filterSelect(sel, allOpts, visibleIds, idAttr) {
+    const currentVal = sel.value;
+    sel.innerHTML = sel.options[0].outerHTML; // keep placeholder
+    allOpts.forEach(opt => {
+      const parentId = String(opt.dataset[idAttr] || '');
+      if (!visibleIds || visibleIds.has(parentId)) {
+        sel.appendChild(opt.cloneNode(true));
+      }
+    });
+    // Restore selection if still present
+    if (currentVal && [...sel.options].some(o => o.value === currentVal)) {
+      sel.value = currentVal;
+    }
+  }
+
+  function onRegionChange() {
+    const regionId = selRegion.value;
+    // Filter fields
+    const visFieldIds = regionId
+      ? new Set(FIELDS.filter(f => String(f.region_id) === regionId).map(f => String(f.id)))
+      : null;
+    filterSelect(selField, allFieldOpts, visFieldIds, 'region');
+
+    // Reset downstream
+    selField.value  = '';
+    selSite.value   = '';
+    selDevice.value = '';
+    onFieldChange();
+    updateBadge();
+  }
+
+  function onFieldChange() {
+    const fieldId = selField.value;
+    const visibleSiteIds = fieldId
+      ? new Set(SITES.filter(s => String(s.field_id) === fieldId).map(s => String(s.id)))
+      : null;
+    filterSelect(selSite, allSiteOpts, visibleSiteIds, 'field');
+
+    selSite.value   = '';
+    selDevice.value = '';
+    onSiteChange();
+    updateBadge();
+  }
+
+  function onSiteChange() {
+    const siteId = selSite.value;
+    const visibleDevIds = siteId
+      ? new Set(DEVICES.filter(d => String(d.site_id) === siteId).map(d => String(d.id)))
+      : null;
+    filterSelect(selDevice, allDeviceOpts, visibleDevIds, 'site');
+
+    selDevice.value = '';
+    updateBadge();
+  }
+
+  function updateBadge() {
+    const badge     = document.getElementById('scopeBadge');
+    const scopeText = document.getElementById('scopeText');
+    const parts = [];
+
+    const rOpt = selRegion.options[selRegion.selectedIndex];
+    const fOpt = selField.options[selField.selectedIndex];
+    const sOpt = selSite.options[selSite.selectedIndex];
+    const dOpt = selDevice.options[selDevice.selectedIndex];
+
+    if (selRegion.value) parts.push(rOpt.text);
+    if (selField.value)  parts.push(fOpt.text);
+    if (selSite.value)   parts.push(sOpt.text);
+    if (selDevice.value) parts.push(dOpt.text.trim());
+
+    if (parts.length) {
+      scopeText.textContent = parts.join(' / ');
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // Clear all filters
+  document.getElementById('clearFilters').addEventListener('click', function () {
+    selRegion.value = '';
+    onRegionChange();
+  });
+
+  selRegion.addEventListener('change', onRegionChange);
+  selField.addEventListener('change',  onFieldChange);
+  selSite.addEventListener('change',   onSiteChange);
+  selDevice.addEventListener('change', updateBadge);
+
+  // ── Download button loading state ─────────────────────────────────
   const form = document.getElementById('reportForm');
   const btn  = document.getElementById('downloadBtn');
 
@@ -87,13 +252,10 @@
     btn.innerHTML = `
       <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
       <span>Формирование отчёта...</span>`;
-    // Re-enable after 8 s (PDF should be ready by then)
     setTimeout(() => {
       btn.disabled = false;
-      btn.innerHTML = `
-        <i class="bi bi-file-earmark-arrow-down fs-5"></i>
-        <span>Скачать PDF-отчёт</span>`;
-    }, 8000);
+      btn.innerHTML = `<i class="bi bi-file-earmark-arrow-down fs-5"></i><span>Скачать PDF-отчёт</span>`;
+    }, 10000);
   });
 }());
 </script>

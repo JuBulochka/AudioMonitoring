@@ -60,7 +60,7 @@ def _register_fonts():
             except Exception:
                 pass
 
-from apps.devices.models import Device, DeviceStatus
+from apps.devices.models import Device, DeviceStatus, Region, Field, Site
 from apps.incidents.models import Incident, IncidentSeverity, IncidentStatus
 from apps.packets.models import AudioClass, AudioPacket
 
@@ -88,7 +88,33 @@ CLR_WHITE       = colors.white
 @login_required
 def report_page(request):
     periods = [(k, v[0]) for k, v in PERIOD_CHOICES.items()]
-    return render(request, 'reports/report.html', {'periods': periods})
+
+    regions = list(Region.objects.order_by('name').values('id', 'name'))
+    fields  = list(Field.objects.order_by('name').values('id', 'name', 'region_id'))
+    sites   = list(Site.objects.order_by('name').values('id', 'name', 'field_id'))
+    devices = list(
+        Device.objects.filter(is_active=True)
+        .select_related('pump_jack__site')
+        .order_by('serial_number')
+        .values('id', 'serial_number', 'name', 'pump_jack__site_id')
+    )
+    # Normalize UUID to str for JSON serialization
+    for d in devices:
+        d['id'] = str(d['id'])
+        d['site_id'] = str(d.pop('pump_jack__site_id') or '')
+
+    import json
+    return render(request, 'reports/report.html', {
+        'periods': periods,
+        'regions': regions,
+        'fields':  fields,
+        'sites':   sites,
+        'devices': devices,
+        'regions_json': json.dumps(regions),
+        'fields_json':  json.dumps(fields),
+        'sites_json':   json.dumps(sites),
+        'devices_json': json.dumps(devices),
+    })
 
 
 @login_required
@@ -101,10 +127,56 @@ def generate_pdf(request):
     now       = timezone.now()
     date_from = now - timedelta(days=period_days)
 
+    # ── Filters ────────────────────────────────────────────────────────────────
+    region_id = request.GET.get('region_id', '').strip()
+    field_id  = request.GET.get('field_id',  '').strip()
+    site_id   = request.GET.get('site_id',   '').strip()
+    device_id = request.GET.get('device_id', '').strip()
+
+    # Build human-readable filter label for PDF header
+    filter_label = 'Все устройства'
+    try:
+        if device_id:
+            dev_obj = Device.objects.select_related(
+                'pump_jack__site__field__region'
+            ).get(id=device_id)
+            filter_label = (
+                f'{dev_obj.pump_jack.site.field.region.name} / '
+                f'{dev_obj.pump_jack.site.field.name} / '
+                f'{dev_obj.pump_jack.site.name} / '
+                f'{dev_obj.serial_number} — {dev_obj.name}'
+            )
+        elif site_id:
+            site_obj = Site.objects.select_related('field__region').get(id=site_id)
+            filter_label = (
+                f'{site_obj.field.region.name} / '
+                f'{site_obj.field.name} / '
+                f'{site_obj.name}'
+            )
+        elif field_id:
+            field_obj = Field.objects.select_related('region').get(id=field_id)
+            filter_label = f'{field_obj.region.name} / {field_obj.name}'
+        elif region_id:
+            region_obj = Region.objects.get(id=region_id)
+            filter_label = region_obj.name
+    except Exception:
+        filter_label = 'Все устройства'
+
     # ── Query data ─────────────────────────────────────────────────────────────
-    all_devices    = Device.objects.filter(is_active=True)
-    total_devices  = all_devices.count()
-    online_devices = all_devices.filter(is_online=True).count()
+    all_devices = Device.objects.filter(is_active=True)
+
+    # Apply geographic / device filters
+    if device_id:
+        all_devices = all_devices.filter(id=device_id)
+    elif site_id:
+        all_devices = all_devices.filter(pump_jack__site_id=site_id)
+    elif field_id:
+        all_devices = all_devices.filter(pump_jack__site__field_id=field_id)
+    elif region_id:
+        all_devices = all_devices.filter(pump_jack__site__field__region_id=region_id)
+
+    total_devices   = all_devices.count()
+    online_devices  = all_devices.filter(is_online=True).count()
     offline_devices = total_devices - online_devices
     critical_devices = all_devices.filter(
         status__in=[DeviceStatus.SITE_VISIT_REQUIRED, DeviceStatus.NEEDS_INSPECTION]
@@ -118,12 +190,17 @@ def generate_pdf(request):
         if cnt:
             status_counts.append((status_label_map[val], cnt))
 
+    # Collect device IDs for incident/packet filtering
+    device_ids = list(all_devices.values_list('id', flat=True))
+
     # Incidents in period
-    incidents_qs = Incident.objects.filter(created_at__gte=date_from).select_related(
-        'device'
-    )
+    incidents_qs = Incident.objects.filter(
+        created_at__gte=date_from,
+        device_id__in=device_ids,
+    ).select_related('device')
     total_incidents  = incidents_qs.count()
     open_incidents   = Incident.objects.filter(
+        device_id__in=device_ids,
         status__in=[IncidentStatus.OPEN, IncidentStatus.ACKNOWLEDGED, IncidentStatus.IN_PROGRESS]
     ).count()
     critical_inc = incidents_qs.filter(severity=IncidentSeverity.CRITICAL).count()
@@ -132,7 +209,11 @@ def generate_pdf(request):
     incidents    = list(incidents_qs.order_by('-created_at')[:50])
 
     # Anomaly stats
-    anomaly_qs    = AudioPacket.objects.filter(recorded_at__gte=date_from, has_anomaly=True)
+    anomaly_qs = AudioPacket.objects.filter(
+        recorded_at__gte=date_from,
+        has_anomaly=True,
+        device_id__in=device_ids,
+    )
     total_anomalies = anomaly_qs.count()
     class_label_map = dict(AudioClass.choices)
     anomaly_by_class = {}
@@ -222,6 +303,7 @@ def generate_pdf(request):
         f'{from_local.strftime("%d.%m.%Y %H:%M")} — {now_local.strftime("%d.%m.%Y %H:%M")}',
         S_SUB,
     ))
+    elems.append(Paragraph(f'Выборка: <b>{filter_label}</b>', S_SUB))
     elems.append(Spacer(1, 2 * mm))
     elems.append(Paragraph(
         f'Сформирован: {now_local.strftime("%d.%m.%Y %H:%M")} &nbsp;|&nbsp; '
