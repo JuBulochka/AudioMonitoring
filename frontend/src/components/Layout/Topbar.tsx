@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
 import { getNotifications, markRead, markAllRead } from '@/api/alerts';
 import { Notification } from '@/types';
 
@@ -10,7 +9,6 @@ interface TopbarProps {
 }
 
 export default function Topbar({ title, actions }: TopbarProps) {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);

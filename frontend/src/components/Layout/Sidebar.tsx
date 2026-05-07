@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -62,9 +62,9 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       {/* Логотип */}
-      <NavLink to="/" className="brand">
+      <Link to="/" className="brand">
         <img src="/static/img/logo.png" alt="PumpJack Monitor" style={{ width: 168, height: 'auto' }} />
-      </NavLink>
+      </Link>
 
       {/* Навигация */}
       <nav style={{ flex: 1, paddingTop: '.5rem', paddingBottom: '.5rem' }}>
