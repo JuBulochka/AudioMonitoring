@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/Layout/AppLayout';
 import Spinner from '@/components/UI/Spinner';
 import Pagination from '@/components/UI/Pagination';
@@ -12,6 +12,7 @@ import { Device } from '@/types';
 const PAGE_SIZE = 30;
 
 export default function DeviceList() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -154,7 +155,11 @@ export default function DeviceList() {
                     </tr>
                   ) : (
                     data.results.map((device: Device) => (
-                      <tr key={device.id}>
+                      <tr
+                        key={device.id}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => navigate(`/devices/${device.id}`)}
+                      >
                         <td className="ps-3">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
                             <span
