@@ -22,7 +22,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          command_timeout: 40m
+          command_timeout: 20m
           script: |
             set -e
             cd ~/kursachAudio
@@ -33,29 +33,13 @@ jobs:
             echo "==> Checking changed files..."
             CHANGED=$(git diff HEAD~1 HEAD --name-only)
 
-            # Build React if frontend changed OR not yet deployed to staticfiles
-            REACT_DEPLOYED=$(docker compose exec -T web test -f /app/staticfiles/react/index.html 2>/dev/null && echo yes || echo no)
-            if echo "$CHANGED" | grep -qE '^frontend/' || [ "$REACT_DEPLOYED" = "no" ]; then
-              echo "==> Building React frontend..."
-              docker run --rm \
-                -v $(pwd)/frontend:/app \
-                -w /app \
-                node:20-alpine \
-                sh -c "npm ci --prefer-offline && npm run build"
-              echo "==> React frontend built. Copying to staticfiles volume..."
-              docker compose exec -T web sh -c "mkdir -p /app/staticfiles/react && cp -rf /app/frontend/dist/. /app/staticfiles/react/"
-              echo "==> React copied to staticfiles/react."
-            else
-              echo "==> React unchanged and already deployed, skipping."
-            fi
-
             # Rebuild ml-service only if its files changed
-            if echo "$CHANGED" | grep -qE 'ml_service/'; then
+            if echo "$CHANGED" | grep -qE '^ml_service/'; then
               echo "==> Rebuilding ml-service..."
               docker compose up -d --build ml-service
             fi
 
-            # Rebuild web/celery if their deps changed, otherwise just restart
+            # Rebuild web/celery if dependencies or Dockerfile changed, otherwise restart
             if echo "$CHANGED" | grep -qE 'requirements\.txt|apps/.*/Dockerfile|^Dockerfile|docker-compose'; then
               echo "==> Rebuilding web + celery..."
               docker compose up -d --build web celery celery-beat
@@ -65,19 +49,12 @@ jobs:
             fi
 
             echo "==> Waiting for web to be ready..."
-            sleep 20
+            sleep 15
 
             echo "==> Testing nginx config..."
             docker compose exec -T nginx nginx -t
 
-            echo "==> Restarting nginx container (ensures new config is loaded)..."
+            echo "==> Restarting nginx..."
             docker compose restart nginx
-            sleep 3
-
-            echo "==> Verifying React deployment..."
-            docker compose exec -T web ls /app/staticfiles/react/
-
-            echo "==> Verifying nginx serves React..."
-            curl -sk https://localhost/ | grep -q "root\|assets\|script" && echo "React OK" || echo "WARNING: may still be Django"
 
             echo "==> Deploy complete!"

@@ -10,7 +10,6 @@ __pycache__/
 *.so
 *.egg
 *.egg-info/
-dist/
 build/
 .Python
 
@@ -36,8 +35,10 @@ logs/
 *.swo
 .DS_Store
 
-# ── Ключи (дополнительная защита) ────────────────────
+# ── Секреты / ключи ──────────────────────────────────
 *.pem
 *.key
-media/platform/
 docker/sshd/authorized_keys
+
+# ── Claude ───────────────────────────────────────────
+.claude/

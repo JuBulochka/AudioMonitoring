@@ -1,0 +1,43 @@
+# Git
+.git/
+.github/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+
+# Виртуальные окружения
+venv/
+env/
+.venv/
+
+# Django runtime (монтируется как volumes в docker-compose)
+staticfiles/
+media/
+logs/
+
+# Тесты
+tests/
+conftest.py
+pytest.ini
+
+# IDE и служебное
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Секреты
+.env
+.env.*
+*.pem
+*.key
+
+# Документация
+*.md
+INSTRUCTIONS.md
+
+# Claude
+.claude/
