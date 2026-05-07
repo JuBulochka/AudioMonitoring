@@ -1,10 +1,11 @@
 """
-User models — custom User with roles and operator profiles.
+User models — custom User with two roles: admin and operator.
 
-Design decisions:
-- Single User model extending AbstractUser (avoids profile divergence issues).
-- Role stored directly on User for fast permission checks without extra joins.
-- OperatorProfile stores operational preferences and regional assignment.
+Admin:
+  - Full access, manages devices and operator accounts
+Operator:
+  - Read/monitor access, filtered by assigned oil fields (месторождения)
+  - Cannot add/edit/delete devices or manage accounts
 """
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -12,25 +13,31 @@ from django.utils.translation import gettext_lazy as _
 
 
 class UserRole(models.TextChoices):
-    ADMIN = "admin", _("Администратор")
-    SUPERVISOR = "supervisor", _("Супервайзер")
+    ADMIN    = "admin",    _("Администратор")
     OPERATOR = "operator", _("Оператор")
-    ENGINEER = "engineer", _("Инженер")
-    READONLY = "readonly", _("Только просмотр")
 
 
 class User(AbstractUser):
     """Extended user with role-based access control."""
 
-    email = models.EmailField(_("email address"), unique=True)
+    email = models.EmailField(_("email address"), unique=True, blank=True, default="")
     role = models.CharField(
         max_length=20,
         choices=UserRole.choices,
         default=UserRole.OPERATOR,
         db_index=True,
     )
+    # Unique employee identifier, auto-generated on creation (e.g. OP-0001)
+    employee_number = models.CharField(
+        max_length=20, unique=True, blank=True,
+        verbose_name=_("Табельный номер"),
+    )
+    is_frozen = models.BooleanField(
+        default=False,
+        verbose_name=_("Аккаунт заморожен"),
+        help_text=_("Замороженный оператор не может войти в систему."),
+    )
     phone = models.CharField(max_length=30, blank=True)
-    is_active = models.BooleanField(default=True)
     last_activity = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "username"
@@ -53,37 +60,41 @@ class User(AbstractUser):
         return self.role == UserRole.ADMIN
 
     @property
-    def is_operator_or_above(self):
-        return self.role in (UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR)
+    def full_name(self):
+        return self.get_full_name() or self.username
 
-    @property
-    def can_manage_devices(self):
-        return self.role in (UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.ENGINEER)
-
-    @property
-    def can_remote_access(self):
-        return self.role in (UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.ENGINEER)
+    def get_allowed_field_ids(self):
+        """
+        Returns set of Field IDs this user may access.
+        Returns None for admin (all fields allowed).
+        Returns empty set if operator has no assigned fields.
+        """
+        if self.is_admin:
+            return None
+        try:
+            return set(self.profile.assigned_fields.values_list("id", flat=True))
+        except OperatorProfile.DoesNotExist:
+            return set()
 
 
 class OperatorProfile(models.Model):
-    """Extended profile for operators — regional assignment and notification preferences."""
+    """Extended profile for operators — field assignment and notification preferences."""
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    # Regional assignment — operator sees only their assigned regions
-    assigned_regions = models.ManyToManyField(
-        "devices.Region",
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="profile"
+    )
+    # Fields (месторождения) this operator can access
+    assigned_fields = models.ManyToManyField(
+        "devices.Field",
         blank=True,
         related_name="assigned_operators",
-        verbose_name=_("Назначенные регионы"),
+        verbose_name=_("Назначенные месторождения"),
     )
     # Notification settings
     notify_critical = models.BooleanField(default=True)
-    notify_offline = models.BooleanField(default=True)
-    notify_warning = models.BooleanField(default=False)
-    notify_email = models.BooleanField(default=False)
-    # Display preferences
-    preferred_timezone = models.CharField(max_length=64, default="UTC")
-    items_per_page = models.PositiveSmallIntegerField(default=50)
+    notify_offline  = models.BooleanField(default=True)
+    notify_warning  = models.BooleanField(default=False)
+    notify_email    = models.BooleanField(default=False)
     # Meta
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

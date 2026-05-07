@@ -8,7 +8,11 @@ from .models import Incident, IncidentStatus, IncidentSeverity, IncidentType, Ma
 
 @login_required
 def incident_list(request):
-    qs = Incident.objects.select_related("device", "assigned_to").order_by("-created_at")
+    from apps.users.access import filter_incidents_by_user
+    qs = filter_incidents_by_user(
+        Incident.objects.select_related("device", "assigned_to"),
+        request.user,
+    ).order_by("-created_at")
 
     status_f = request.GET.get("status")
     severity_f = request.GET.get("severity")

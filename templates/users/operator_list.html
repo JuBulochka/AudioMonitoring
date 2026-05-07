@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Операторы — АСУТП Мониторинг{% endblock %}
+{% block page_title %}Операторы{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'operator-create' %}" class="btn btn-sm btn-primary d-flex align-items-center gap-1"
+   style="background:#238636;border-color:#238636">
+  <i class="bi bi-person-plus"></i> Добавить оператора
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Search -->
+<div class="mb-3">
+  <form method="get" class="d-flex gap-2" style="max-width:360px">
+    <input type="text" name="q" value="{{ filter_q }}" placeholder="Поиск по ФИО, логину, таб. номеру…"
+           class="form-control form-control-sm">
+    <button type="submit" class="btn btn-sm btn-outline-secondary px-3">
+      <i class="bi bi-search"></i>
+    </button>
+    {% if filter_q %}
+    <a href="{% url 'operator-list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-x"></i>
+    </a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    {% if operators %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Таб. №</th>
+            <th>ФИО</th>
+            <th>Логин</th>
+            <th>Месторождения</th>
+            <th>Статус</th>
+            <th style="width:80px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for op in operators %}
+          <tr>
+            <td style="font-family:monospace;color:var(--txt-muted)">{{ op.employee_number|default:"—" }}</td>
+            <td>
+              <div class="fw-medium">{{ op.get_full_name|default:op.username }}</div>
+              {% if op.email %}<div style="font-size:.75rem;color:var(--txt-muted)">{{ op.email }}</div>{% endif %}
+            </td>
+            <td style="font-family:monospace">{{ op.username }}</td>
+            <td style="font-size:.82rem">
+              {% with fields=op.profile.assigned_fields.all %}
+                {% if fields %}
+                  {% for f in fields %}<span class="badge me-1 mb-1"
+                    style="background:var(--bg-card-header);color:var(--txt-muted);border:1px solid var(--border-clr);font-weight:400">
+                    {{ f.name }}</span>{% endfor %}
+                {% else %}
+                  <span style="color:var(--txt-muted)">Не назначены</span>
+                {% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              {% if op.is_frozen %}
+                <span class="badge" style="background:#ffebe9;color:#cf222e;border:1px solid #ffc1c1">
+                  <i class="bi bi-lock-fill me-1"></i>Заморожен
+                </span>
+              {% else %}
+                <span class="badge" style="background:#dafbe1;color:#1a7f37;border:1px solid #b2f2c9">
+                  <i class="bi bi-check-circle me-1"></i>Активен
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{% url 'operator-detail' op.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-2">
+                <i class="bi bi-pencil"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if paginator.num_pages > 1 %}
+    <div class="d-flex justify-content-center py-3">
+      <nav><ul class="pagination pagination-sm mb-0">
+        {% if operators.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ operators.previous_page_number }}{% if filter_q %}&q={{ filter_q }}{% endif %}">&laquo;</a></li>
+        {% endif %}
+        {% for n in paginator.page_range %}
+        <li class="page-item {% if n == operators.number %}active{% endif %}">
+          <a class="page-link" href="?page={{ n }}{% if filter_q %}&q={{ filter_q }}{% endif %}">{{ n }}</a>
+        </li>
+        {% endfor %}
+        {% if operators.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ operators.next_page_number }}{% if filter_q %}&q={{ filter_q }}{% endif %}">&raquo;</a></li>
+        {% endif %}
+      </ul></nav>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5" style="color:var(--txt-muted)">
+      <i class="bi bi-people" style="font-size:2.5rem;opacity:.3"></i>
+      <div class="mt-2">
+        {% if filter_q %}Операторы не найдены.{% else %}Операторы ещё не добавлены.{% endif %}
+      </div>
+      {% if not filter_q %}
+      <a href="{% url 'operator-create' %}" class="btn btn-sm btn-primary mt-3"
+         style="background:#238636;border-color:#238636">
+        <i class="bi bi-person-plus me-1"></i>Добавить первого оператора
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

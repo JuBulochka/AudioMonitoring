@@ -89,9 +89,19 @@ CLR_WHITE       = colors.white
 def report_page(request):
     periods = [(k, v[0]) for k, v in PERIOD_CHOICES.items()]
 
-    regions = list(Region.objects.order_by('name').values('id', 'name'))
-    fields  = list(Field.objects.order_by('name').values('id', 'name', 'region_id'))
-    sites   = list(Site.objects.order_by('name').values('id', 'name', 'field_id'))
+    # Limit filter options for operators to their assigned fields only
+    allowed_field_ids = request.user.get_allowed_field_ids()  # None = admin (all)
+
+    if allowed_field_ids is None:
+        fields_qs = Field.objects.all()
+    else:
+        fields_qs = Field.objects.filter(id__in=allowed_field_ids)
+
+    regions = list(Region.objects.filter(
+        fields__in=fields_qs
+    ).distinct().order_by('name').values('id', 'name'))
+    fields  = list(fields_qs.order_by('name').values('id', 'name', 'region_id'))
+    sites   = list(Site.objects.filter(field__in=fields_qs).order_by('name').values('id', 'name', 'field_id'))
     devices = list(
         Device.objects.filter(is_active=True)
         .select_related('pump_jack__site')
@@ -156,9 +166,10 @@ def generate_pdf(request):
         filter_label = 'Все устройства'
 
     # ── Query data ─────────────────────────────────────────────────────────────
-    all_devices = Device.objects.filter(is_active=True)
+    from apps.users.access import filter_devices_by_user
+    all_devices = filter_devices_by_user(Device.objects.filter(is_active=True), request.user)
 
-    # Apply geographic / device filters (most specific wins)
+    # Apply additional geographic / device filters on top of access control
     if device_ids_param:
         all_devices = all_devices.filter(id__in=device_ids_param)
     elif site_id:

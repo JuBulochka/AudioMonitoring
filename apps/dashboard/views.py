@@ -12,7 +12,9 @@ def dashboard(request):
     from apps.alerts.models import Notification
 
     now = timezone.now()
-    devices_qs = Device.objects.filter(is_active=True)
+    from apps.users.access import filter_devices_by_user, filter_incidents_by_user
+    devices_qs = filter_devices_by_user(Device.objects.filter(is_active=True), request.user)
+    incidents_base = filter_incidents_by_user(Incident.objects.all(), request.user)
 
     ctx = {
         "total_devices": devices_qs.count(),
@@ -21,10 +23,10 @@ def dashboard(request):
         "critical_devices": devices_qs.filter(
             status__in=[DeviceStatus.NEEDS_INSPECTION, DeviceStatus.SITE_VISIT_REQUIRED]
         ).count(),
-        "open_incidents": Incident.objects.filter(
+        "open_incidents": incidents_base.filter(
             status__in=[IncidentStatus.OPEN, IncidentStatus.ACKNOWLEDGED, IncidentStatus.IN_PROGRESS]
         ).count(),
-        "recent_incidents": Incident.objects.filter(
+        "recent_incidents": incidents_base.filter(
             created_at__gte=now - timedelta(hours=24)
         ).select_related("device").order_by("-created_at")[:10],
         "recent_notifications": Notification.objects.filter(

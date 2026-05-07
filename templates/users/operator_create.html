@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Новый оператор — АСУТП Мониторинг{% endblock %}
+{% block page_title %}Добавить оператора{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-7">
+
+    <form method="post">
+      {% csrf_token %}
+
+      <!-- Personal info -->
+      <div class="card mb-3">
+        <div class="card-header fw-semibold" style="font-size:.9rem">
+          <i class="bi bi-person me-2"></i>Личные данные
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label class="form-label" style="font-size:.85rem">Фамилия <span class="text-danger">*</span></label>
+              <input type="text" name="last_name" value="{{ post.last_name|default:'' }}"
+                     class="form-control form-control-sm" placeholder="Иванов" required>
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" style="font-size:.85rem">Имя <span class="text-danger">*</span></label>
+              <input type="text" name="first_name" value="{{ post.first_name|default:'' }}"
+                     class="form-control form-control-sm" placeholder="Иван" required>
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" style="font-size:.85rem">Отчество</label>
+              <input type="text" name="middle_name" value="{{ post.middle_name|default:'' }}"
+                     class="form-control form-control-sm" placeholder="Иванович">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" style="font-size:.85rem">Email</label>
+              <input type="email" name="email" value="{{ post.email|default:'' }}"
+                     class="form-control form-control-sm" placeholder="operator@example.com">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" style="font-size:.85rem">Телефон</label>
+              <input type="text" name="phone" value="{{ post.phone|default:'' }}"
+                     class="form-control form-control-sm" placeholder="+7 (900) 000-00-00">
+            </div>
+          </div>
+
+          <!-- Auto-generated notice -->
+          <div class="mt-3 p-3 rounded" style="background:var(--bg-card-header);border:1px solid var(--border-clr);font-size:.82rem;color:var(--txt-muted)">
+            <i class="bi bi-magic me-2"></i>
+            <strong style="color:var(--txt-primary)">Автоматически</strong> будут созданы:
+            табельный номер <code>OP-XXXX</code>, логин (транслит. фамилии + инициал) и случайный пароль.
+            Пароль будет показан <strong style="color:var(--txt-primary)">один раз</strong> после создания.
+          </div>
+        </div>
+      </div>
+
+      <!-- Field assignment -->
+      <div class="card mb-3">
+        <div class="card-header fw-semibold" style="font-size:.9rem">
+          <i class="bi bi-geo-alt me-2"></i>Назначение месторождений
+        </div>
+        <div class="card-body">
+          {% if all_fields %}
+          <div class="row g-2">
+            {% regroup all_fields by region as region_list %}
+            {% for region_group in region_list %}
+            <div class="col-12">
+              <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-muted);margin-bottom:.4rem">
+                {{ region_group.grouper.name }}
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                {% for f in region_group.list %}
+                <label class="d-flex align-items-center gap-2 px-3 py-2 rounded"
+                       style="border:1px solid var(--border-clr);cursor:pointer;font-size:.85rem;
+                              background:var(--bg-card-header)">
+                  <input type="checkbox" class="form-check-input m-0" name="field_ids" value="{{ f.id }}"
+                         {% if f.id|stringformat:"s" in post.field_ids %}checked{% endif %}>
+                  {{ f.name }}
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted mb-0" style="font-size:.85rem">Месторождения ещё не добавлены. Можно назначить позже.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" style="background:#238636;border-color:#238636">
+          <i class="bi bi-person-plus me-1"></i>Создать оператора
+        </button>
+        <a href="{% url 'operator-list' %}" class="btn btn-outline-secondary">Отмена</a>
+      </div>
+    </form>
+
+  </div>
+</div>
+{% endblock %}

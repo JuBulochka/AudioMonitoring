@@ -14,9 +14,13 @@ from .models import Device, DeviceStatus, Region, Field, Site, PumpJack
 @login_required
 def device_list(request):
     from apps.devices.models import Region
+    from apps.users.access import filter_devices_by_user
 
-    qs = Device.objects.filter(is_active=True).select_related(
-        "pump_jack__site__field__region", "assigned_operator"
+    qs = filter_devices_by_user(
+        Device.objects.filter(is_active=True).select_related(
+            "pump_jack__site__field__region", "assigned_operator"
+        ),
+        request.user,
     ).order_by("-last_seen_at")
 
     # Filters
@@ -160,6 +164,11 @@ def device_detail(request, device_id):
 
 @login_required
 def device_create(request):
+    from apps.users.access import admin_required as _ar
+    if not request.user.is_admin:
+        from django.contrib import messages as _m
+        _m.error(request, "Добавление устройств доступно только администраторам.")
+        return redirect("device-list")
     """Custom single-page device creation with full geographic hierarchy."""
     if request.method == "POST":
         try:

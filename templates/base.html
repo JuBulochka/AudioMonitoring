@@ -470,6 +470,11 @@
     </a>
 
     <div class="sidebar-section">Система</div>
+    {% if request.user.is_admin %}
+    <a href="{% url 'operator-list' %}" class="{% if 'operator' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-people"></i> Операторы
+    </a>
+    {% endif %}
     <a href="/admin/" target="_blank">
       <i class="bi bi-shield-lock"></i> Админка
     </a>

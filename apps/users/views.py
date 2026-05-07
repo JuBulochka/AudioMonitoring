@@ -17,13 +17,15 @@ def login_view(request):
         password = request.POST.get("password", "")
         user = authenticate(request, username=username, password=password)
         if user:
-            login(request, user)
-            user.last_activity = timezone.now()
-            user.save(update_fields=["last_activity"])
-            # Create profile if missing
-            OperatorProfile.objects.get_or_create(user=user)
-            next_url = request.GET.get("next", "/")
-            return redirect(next_url)
+            if user.is_frozen:
+                messages.error(request, "Ваш аккаунт заморожен. Обратитесь к администратору.")
+            else:
+                login(request, user)
+                user.last_activity = timezone.now()
+                user.save(update_fields=["last_activity"])
+                OperatorProfile.objects.get_or_create(user=user)
+                next_url = request.GET.get("next", "/")
+                return redirect(next_url)
         else:
             messages.error(request, "Неверный логин или пароль.")
 
