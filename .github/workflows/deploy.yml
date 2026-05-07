@@ -70,10 +70,14 @@ jobs:
             echo "==> Testing nginx config..."
             docker compose exec -T nginx nginx -t
 
-            echo "==> Reloading nginx..."
-            docker compose exec -T nginx nginx -s reload
+            echo "==> Restarting nginx container (ensures new config is loaded)..."
+            docker compose restart nginx
+            sleep 3
 
             echo "==> Verifying React deployment..."
             docker compose exec -T web ls /app/staticfiles/react/
+
+            echo "==> Verifying nginx serves React..."
+            curl -sk https://localhost/ | grep -q "root\|assets\|script" && echo "React OK" || echo "WARNING: may still be Django"
 
             echo "==> Deploy complete!"
