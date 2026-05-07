@@ -280,14 +280,15 @@
 
     /* ── Notification badge ───────────────────────────── */
     #notif-badge {
-      position: absolute; top: 2px; right: 2px;
+      margin-left: auto;
       background: #cf222e;
       color: #fff; font-size: .6rem; font-weight: 700; line-height: 1;
-      min-width: 16px; height: 16px;
-      border-radius: 8px;
-      padding: 0 4px;
+      min-width: 18px; height: 18px;
+      border-radius: 9px;
+      padding: 0 5px;
       display: none;
       align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
 
     /* ── Toast container ──────────────────────────────── */
@@ -452,7 +453,7 @@
     <a href="{% url 'maintenance-list' %}" class="{% if request.resolver_match.url_name == 'maintenance-list' %}active{% endif %}">
       <i class="bi bi-tools"></i> Обслуживание
     </a>
-    <a href="{% url 'notifications' %}" class="{% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" style="position:relative">
+    <a href="{% url 'notifications' %}" class="{% if request.resolver_match.url_name == 'notifications' %}active{% endif %}">
       <i class="bi bi-bell"></i> Уведомления
       <span id="notif-badge">{{ unread_notifications_count }}</span>
     </a>
