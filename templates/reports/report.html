@@ -4,6 +4,61 @@
 {% block title %}Отчёты — АСУТП Мониторинг{% endblock %}
 {% block page_title %}Отчёты{% endblock %}
 
+{% block extra_head %}
+<style>
+  .device-dropdown-menu {
+    min-width: 100%;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .device-dropdown-menu .dev-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    font-size: .84rem;
+    cursor: pointer;
+    color: var(--txt-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .device-dropdown-menu .dev-item:hover {
+    background: var(--bg-hover);
+  }
+  .device-dropdown-menu .dev-item input {
+    flex-shrink: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .device-dropdown-menu .dev-empty {
+    padding: 6px 12px;
+    font-size: .84rem;
+    color: var(--txt-muted);
+  }
+  #deviceToggleBtn {
+    background: var(--bg-input);
+    border-color: var(--border-clr);
+    color: var(--txt-primary);
+    font-size: .875rem;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #deviceToggleBtn:hover, #deviceToggleBtn:focus {
+    background: var(--bg-input);
+    border-color: #0969da;
+    color: var(--txt-primary);
+  }
+  html[data-theme="dark"] #deviceToggleBtn:hover,
+  html[data-theme="dark"] #deviceToggleBtn:focus {
+    border-color: #58a6ff;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-xl-6 col-lg-8 col-md-10">
@@ -16,7 +71,7 @@
       <div class="card-body">
         <p style="color:var(--txt-muted);font-size:.875rem;margin-bottom:1.5rem">
           Выберите период и при необходимости ограничьте выборку по региону, месторождению,
-          кусту скважин или конкретному устройству.
+          кусту скважин или конкретным устройствам.
         </p>
 
         <form id="reportForm" method="get" action="{% url 'report-pdf' %}">
@@ -77,22 +132,37 @@
               </select>
             </div>
 
-            <!-- Device -->
+            <!-- Devices — multi-select with checkboxes -->
             <div class="mb-0">
               <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Устройство</label>
-              <select class="form-select form-select-sm" id="sel_device" name="device_id">
-                <option value="">— Все устройства</option>
-                {% for d in devices %}
-                <option value="{{ d.id }}" data-site="{{ d.site_id }}">
-                  {{ d.serial_number }}{% if d.name %} — {{ d.name }}{% endif %}
-                </option>
-                {% endfor %}
-              </select>
+              <div class="dropdown" id="deviceDropdown">
+                <button type="button" class="btn btn-sm w-100" id="deviceToggleBtn"
+                        data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                  <span id="deviceBtnLabel">— Все устройства</span>
+                  <i class="bi bi-chevron-down" style="font-size:.65rem;opacity:.6"></i>
+                </button>
+                <div class="dropdown-menu device-dropdown-menu" id="deviceMenu">
+                  <!-- "Select all" row -->
+                  <label class="dev-item" style="border-bottom:1px solid var(--border-clr);margin-bottom:3px;padding-bottom:7px">
+                    <input type="checkbox" class="form-check-input" id="chkAll">
+                    <span style="color:var(--txt-muted);font-style:italic">Все устройства</span>
+                  </label>
+                  {% for d in devices %}
+                  <label class="dev-item" data-site="{{ d.site_id }}">
+                    <input type="checkbox" class="form-check-input device-chk"
+                           name="device_id" value="{{ d.id }}"
+                           data-site="{{ d.site_id }}">
+                    <span>{{ d.serial_number }}{% if d.name %} — {{ d.name }}{% endif %}</span>
+                  </label>
+                  {% endfor %}
+                  <div class="dev-empty" id="noDevMsg" style="display:none">Нет устройств для выбранного куста</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Selected scope badge -->
-          <div id="scopeBadge" class="mb-3" style="display:none">
+          <!-- Scope badge -->
+          <div id="scopeBadge" class="mb-3 mt-2" style="display:none">
             <span class="badge rounded-pill"
                   style="background:var(--bg-card-header);color:var(--txt-muted);
                          border:1px solid var(--border-clr);font-size:.78rem;font-weight:400;padding:.35em .75em">
@@ -120,62 +190,111 @@
 {% block extra_scripts %}
 <script>
 (function () {
-  const selRegion = document.getElementById('sel_region');
-  const selField  = document.getElementById('sel_field');
-  const selSite   = document.getElementById('sel_site');
-  const selDevice = document.getElementById('sel_device');
+  var selRegion = document.getElementById('sel_region');
+  var selField  = document.getElementById('sel_field');
+  var selSite   = document.getElementById('sel_site');
 
-  // Snapshot all original options once (excluding the "all" placeholder at index 0)
-  const allFieldOpts  = Array.from(selField.options).slice(1).map(o => o.cloneNode(true));
-  const allSiteOpts   = Array.from(selSite.options).slice(1).map(o => o.cloneNode(true));
-  const allDeviceOpts = Array.from(selDevice.options).slice(1).map(o => o.cloneNode(true));
+  // Snapshot all original option elements for cascade filtering
+  var allFieldOpts  = Array.from(selField.options).slice(1).map(function(o){ return o.cloneNode(true); });
+  var allSiteOpts   = Array.from(selSite.options).slice(1).map(function(o){ return o.cloneNode(true); });
 
-  /**
-   * Rebuild a <select> showing only options whose data-{dataAttr} === parentVal.
-   * If parentVal is empty, show all options.
-   */
+  // ── Cascade filter helpers ────────────────────────────────────────
   function filterSelect(sel, allOpts, parentVal, dataAttr) {
-    const saved = sel.value;
-    // Keep only the placeholder
+    var saved = sel.value;
     sel.innerHTML = sel.options[0].outerHTML;
-    allOpts.forEach(function (opt) {
+    allOpts.forEach(function(opt) {
       if (!parentVal || String(opt.dataset[dataAttr] || '') === String(parentVal)) {
         sel.appendChild(opt.cloneNode(true));
       }
     });
-    // Restore previous selection if it's still present
-    if (saved && Array.from(sel.options).some(function (o) { return o.value === saved; })) {
+    if (saved && Array.from(sel.options).some(function(o){ return o.value === saved; })) {
       sel.value = saved;
     }
   }
 
-  function onRegionChange() {
-    var regionId = selRegion.value;
-    filterSelect(selField, allFieldOpts, regionId, 'region');
-    selField.value = '';
-    onFieldChange();          // cascades down
-  }
-
-  function onFieldChange() {
-    var fieldId = selField.value;
-    filterSelect(selSite, allSiteOpts, fieldId, 'field');
-    selSite.value = '';
-    onSiteChange();           // cascades down
-  }
-
-  function onSiteChange() {
-    var siteId = selSite.value;
-    filterSelect(selDevice, allDeviceOpts, siteId, 'site');
-    selDevice.value = '';
+  function filterDevices(siteId) {
+    var items   = document.querySelectorAll('#deviceMenu .dev-item[data-site]');
+    var anyVis  = false;
+    items.forEach(function(item) {
+      var chk = item.querySelector('.device-chk');
+      var matches = !siteId || String(item.dataset.site) === String(siteId);
+      item.style.display = matches ? '' : 'none';
+      if (!matches) chk.checked = false;
+      else anyVis = true;
+    });
+    document.getElementById('noDevMsg').style.display = anyVis ? 'none' : '';
+    updateDeviceBtn();
     updateBadge();
   }
 
+  function updateDeviceBtn() {
+    var checked = document.querySelectorAll('.device-chk:checked');
+    var lbl = document.getElementById('deviceBtnLabel');
+    var chkAll = document.getElementById('chkAll');
+    if (checked.length === 0) {
+      lbl.textContent = '— Все устройства';
+      chkAll.checked = false;
+      chkAll.indeterminate = false;
+    } else {
+      var visibleChks = document.querySelectorAll('.device-chk:not([style*="display: none"])');
+      var allChecked  = Array.from(visibleChks).every(function(c){ return c.checked; });
+      chkAll.checked       = allChecked;
+      chkAll.indeterminate = !allChecked;
+      lbl.textContent = checked.length === 1
+        ? checked[0].closest('.dev-item').querySelector('span').textContent.trim()
+        : 'Выбрано: ' + checked.length + ' устр.';
+    }
+  }
+
+  // ── Select-all checkbox ───────────────────────────────────────────
+  document.getElementById('chkAll').addEventListener('change', function() {
+    var visible = document.querySelectorAll('#deviceMenu .dev-item[data-site]:not([style*="display: none"]) .device-chk');
+    visible.forEach(function(c){ c.checked = this.checked; }, this);
+    updateDeviceBtn();
+    updateBadge();
+  });
+
+  document.querySelectorAll('.device-chk').forEach(function(chk) {
+    chk.addEventListener('change', function() {
+      updateDeviceBtn();
+      updateBadge();
+    });
+  });
+
+  // ── Cascade handlers ─────────────────────────────────────────────
+  function onRegionChange() {
+    filterSelect(selField, allFieldOpts, selRegion.value, 'region');
+    selField.value = '';
+    onFieldChange();
+  }
+
+  function onFieldChange() {
+    filterSelect(selSite, allSiteOpts, selField.value, 'field');
+    selSite.value = '';
+    onSiteChange();
+  }
+
+  function onSiteChange() {
+    filterDevices(selSite.value);
+  }
+
+  selRegion.addEventListener('change', onRegionChange);
+  selField.addEventListener('change',  onFieldChange);
+  selSite.addEventListener('change',   onSiteChange);
+
+  // ── Scope badge ───────────────────────────────────────────────────
   function updateBadge() {
     var parts = [];
     if (selRegion.value) parts.push(selRegion.options[selRegion.selectedIndex].text);
     if (selField.value)  parts.push(selField.options[selField.selectedIndex].text);
     if (selSite.value)   parts.push(selSite.options[selSite.selectedIndex].text);
-    if (selDevice.value) parts.push(selDevice.options[selDevice.selectedIndex].text.trim());
+
+    var checked = document.querySelectorAll('.device-chk:checked');
+    if (checked.length === 1) {
+      parts.push(checked[0].closest('.dev-item').querySelector('span').textContent.trim());
+    } else if (checked.length > 1) {
+      parts.push('Устройств: ' + checked.length);
+    }
 
     var badge = document.getElementById('scopeBadge');
     if (parts.length) {
@@ -186,24 +305,21 @@
     }
   }
 
-  selDevice.addEventListener('change', updateBadge);
-
-  selRegion.addEventListener('change', onRegionChange);
-  selField.addEventListener('change',  onFieldChange);
-  selSite.addEventListener('change',   onSiteChange);
-
-  document.getElementById('clearFilters').addEventListener('click', function () {
+  // ── Clear all ─────────────────────────────────────────────────────
+  document.getElementById('clearFilters').addEventListener('click', function() {
     selRegion.value = '';
+    document.querySelectorAll('.device-chk').forEach(function(c){ c.checked = false; });
+    document.getElementById('chkAll').checked = false;
     onRegionChange();
   });
 
-  // Loading state on submit
+  // ── Loading state ─────────────────────────────────────────────────
   var form = document.getElementById('reportForm');
   var btn  = document.getElementById('downloadBtn');
-  form.addEventListener('submit', function () {
+  form.addEventListener('submit', function() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span><span>Формирование...</span>';
-    setTimeout(function () {
+    setTimeout(function() {
       btn.disabled = false;
       btn.innerHTML = '<i class="bi bi-file-earmark-arrow-down fs-5"></i><span>Скачать PDF-отчёт</span>';
     }, 12000);

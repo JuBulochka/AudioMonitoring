@@ -128,30 +128,23 @@ def generate_pdf(request):
     date_from = now - timedelta(days=period_days)
 
     # ── Filters ────────────────────────────────────────────────────────────────
-    region_id = request.GET.get('region_id', '').strip()
-    field_id  = request.GET.get('field_id',  '').strip()
-    site_id   = request.GET.get('site_id',   '').strip()
-    device_id = request.GET.get('device_id', '').strip()
+    region_id  = request.GET.get('region_id', '').strip()
+    field_id   = request.GET.get('field_id',  '').strip()
+    site_id    = request.GET.get('site_id',   '').strip()
+    device_ids_param = [d for d in request.GET.getlist('device_id') if d.strip()]
 
     # Build human-readable filter label for PDF header
     filter_label = 'Все устройства'
     try:
-        if device_id:
-            dev_obj = Device.objects.select_related(
-                'pump_jack__site__field__region'
-            ).get(id=device_id)
-            filter_label = (
-                f'{dev_obj.pump_jack.site.field.region.name} / '
-                f'{dev_obj.pump_jack.site.field.name} / '
-                f'{dev_obj.pump_jack.site.name} / '
-                f'{dev_obj.serial_number} — {dev_obj.name}'
-            )
+        if device_ids_param:
+            devs_qs = Device.objects.filter(id__in=device_ids_param).values('serial_number', 'name')
+            names = [f"{d['serial_number']}" + (f" — {d['name']}" if d['name'] else '') for d in devs_qs]
+            filter_label = 'Устройства: ' + ', '.join(names)
         elif site_id:
             site_obj = Site.objects.select_related('field__region').get(id=site_id)
             filter_label = (
                 f'{site_obj.field.region.name} / '
-                f'{site_obj.field.name} / '
-                f'{site_obj.name}'
+                f'{site_obj.field.name} / {site_obj.name}'
             )
         elif field_id:
             field_obj = Field.objects.select_related('region').get(id=field_id)
@@ -165,9 +158,9 @@ def generate_pdf(request):
     # ── Query data ─────────────────────────────────────────────────────────────
     all_devices = Device.objects.filter(is_active=True)
 
-    # Apply geographic / device filters
-    if device_id:
-        all_devices = all_devices.filter(id=device_id)
+    # Apply geographic / device filters (most specific wins)
+    if device_ids_param:
+        all_devices = all_devices.filter(id__in=device_ids_param)
     elif site_id:
         all_devices = all_devices.filter(pump_jack__site_id=site_id)
     elif field_id:
@@ -353,49 +346,62 @@ def generate_pdf(request):
     elems.append(Paragraph(f'Инциденты за {period_label}', S_H2))
 
     if incidents:
-        inc_data = [['Дата', 'Устройство', 'Критичность', 'Статус', 'Заголовок']]
-        col_w = [
-            page_w * 0.12, page_w * 0.16,
-            page_w * 0.14, page_w * 0.14,
-            page_w * 0.44,
-        ]
-
+        # Abbreviated labels so text fits narrow columns without overflow
         sev_labels = {
-            IncidentSeverity.CRITICAL:    'Критично',
-            IncidentSeverity.WARNING:     'Предупреждение',
-            IncidentSeverity.INFO:        'Информация',
+            IncidentSeverity.CRITICAL: 'Критично',
+            IncidentSeverity.WARNING:  'Пред-ние',
+            IncidentSeverity.INFO:     'Инфо',
         }
         sta_labels = {
-            IncidentStatus.OPEN:          'Открыт',
-            IncidentStatus.ACKNOWLEDGED:  'Принят',
-            IncidentStatus.IN_PROGRESS:   'В работе',
-            IncidentStatus.RESOLVED:      'Устранён',
-            IncidentStatus.FALSE_POSITIVE:'Ложное',
-            IncidentStatus.CLOSED:        'Закрыт',
+            IncidentStatus.OPEN:           'Открыт',
+            IncidentStatus.ACKNOWLEDGED:   'Принят',
+            IncidentStatus.IN_PROGRESS:    'В работе',
+            IncidentStatus.RESOLVED:       'Устранён',
+            IncidentStatus.FALSE_POSITIVE: 'Ложное',
+            IncidentStatus.CLOSED:         'Закрыт',
         }
 
+        S_CELL = ParagraphStyle('Cell', parent=styles['Normal'],
+                                fontSize=7.5, fontName=fn, textColor=CLR_DARK,
+                                leading=10, wordWrap='CJK')
+        S_CELL_B = ParagraphStyle('CellB', parent=S_CELL, fontName=fn_b)
+
+        col_w = [
+            page_w * 0.13,   # Дата
+            page_w * 0.17,   # Устройство
+            page_w * 0.13,   # Критичность
+            page_w * 0.13,   # Статус
+            page_w * 0.44,   # Заголовок
+        ]
+
+        inc_data = [[
+            Paragraph('Дата',        S_CELL_B),
+            Paragraph('Устройство',  S_CELL_B),
+            Paragraph('Критичность', S_CELL_B),
+            Paragraph('Статус',      S_CELL_B),
+            Paragraph('Заголовок',   S_CELL_B),
+        ]]
+
+        # Colour severity cells via Paragraph style (TEXTCOLOR doesn't apply to Paragraph cells)
+        S_CELL_CRIT = ParagraphStyle('CellCrit', parent=S_CELL, textColor=CLR_RED, fontName=fn_b)
+        S_CELL_WARN = ParagraphStyle('CellWarn', parent=S_CELL, textColor=CLR_YELLOW)
+
+        # Rebuild data rows with coloured severity cell
+        inc_data = [inc_data[0]]
         for inc in incidents:
+            sev_txt = sev_labels.get(inc.severity, inc.severity)
+            sev_style = (S_CELL_CRIT if inc.severity == IncidentSeverity.CRITICAL
+                         else S_CELL_WARN if inc.severity == IncidentSeverity.WARNING
+                         else S_CELL)
             inc_data.append([
-                localtime(inc.created_at).strftime('%d.%m.%Y'),
-                inc.device.serial_number,
-                sev_labels.get(inc.severity, inc.severity),
-                sta_labels.get(inc.status,   inc.status),
-                Paragraph(inc.title[:90], S_NORM),
+                Paragraph(localtime(inc.created_at).strftime('%d.%m.%Y'), S_CELL),
+                Paragraph(inc.device.serial_number, S_CELL),
+                Paragraph(sev_txt, sev_style),
+                Paragraph(sta_labels.get(inc.status, inc.status), S_CELL),
+                Paragraph(inc.title[:120], S_CELL),
             ])
 
-        # Build severity colour commands before creating table
-        ts_extra = []
-        for row_idx, inc in enumerate(incidents, start=1):
-            if inc.severity == IncidentSeverity.CRITICAL:
-                ts_extra += [
-                    ('TEXTCOLOR', (2, row_idx), (2, row_idx), CLR_RED),
-                    ('FONTNAME',  (2, row_idx), (2, row_idx), 'Helvetica-Bold'),
-                ]
-            elif inc.severity == IncidentSeverity.WARNING:
-                ts_extra.append(('TEXTCOLOR', (2, row_idx), (2, row_idx), CLR_YELLOW))
-
-        tbl = _make_table(inc_data, col_w, font_size=8, repeat_header=True,
-                          extra_cmds=ts_extra, fn=fn, fn_b=fn_b)
+        tbl = _make_table(inc_data, col_w, font_size=7.5, repeat_header=True, fn=fn, fn_b=fn_b)
         elems.append(tbl)
     else:
         elems.append(Paragraph('Инциденты за выбранный период отсутствуют.', S_NORM))
