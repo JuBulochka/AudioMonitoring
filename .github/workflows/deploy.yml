@@ -67,6 +67,9 @@ jobs:
             echo "==> Waiting for web to be ready..."
             sleep 20
 
+            echo "==> Testing nginx config..."
+            docker compose exec -T nginx nginx -t
+
             echo "==> Reloading nginx..."
             docker compose exec -T nginx nginx -s reload
 
