@@ -3,7 +3,7 @@ name: Deploy to Production
 on:
   push:
     branches:
-      - main  # только push в main запускает деплой
+      - main
 
 jobs:
   deploy:
@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # нужно для сравнения с предыдущим коммитом
+          fetch-depth: 2
 
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -33,23 +33,23 @@ jobs:
             echo "==> Checking changed files..."
             CHANGED=$(git diff HEAD~1 HEAD --name-only)
 
-            # Build React if: frontend files changed OR dist/index.html missing (first deploy / broken)
-            DIST_INDEX="$(pwd)/frontend/dist/index.html"
-            if echo "$CHANGED" | grep -qE '^frontend/' || [ ! -f "$DIST_INDEX" ]; then
+            # Build React if frontend changed OR if React is not yet in staticfiles
+            REACT_DEPLOYED=$(docker compose exec -T web test -f /app/staticfiles/react/index.html 2>/dev/null && echo yes || echo no)
+            if echo "$CHANGED" | grep -qE '^frontend/' || [ "$REACT_DEPLOYED" = "no" ]; then
               echo "==> Building React frontend..."
               docker run --rm \
                 -v $(pwd)/frontend:/app \
                 -w /app \
                 node:20-alpine \
                 sh -c "npm ci --prefer-offline && npm run build"
-              echo "==> React frontend built."
+              echo "==> React frontend built successfully."
             else
-              echo "==> React frontend unchanged, skipping build."
+              echo "==> React frontend unchanged and already deployed, skipping build."
             fi
 
             # Rebuild ml-service only if its files changed (TF build is slow)
             if echo "$CHANGED" | grep -qE 'ml_service/'; then
-              echo "==> Rebuilding ml-service (may take 5-10 min for TensorFlow)..."
+              echo "==> Rebuilding ml-service..."
               docker compose up -d --build ml-service
             fi
 
@@ -58,17 +58,17 @@ jobs:
               echo "==> Rebuilding web + celery..."
               docker compose up -d --build web celery celery-beat
             else
-              echo "==> Restarting web + celery (entrypoint: migrate + collectstatic + React copy)..."
+              echo "==> Restarting web + celery..."
               docker compose restart web celery celery-beat
             fi
 
-            echo "==> Waiting for entrypoint to finish..."
-            sleep 15
+            echo "==> Waiting for entrypoint to finish (migrate + collectstatic + React copy)..."
+            sleep 20
 
-            echo "==> Reloading nginx with updated config..."
+            echo "==> Reloading nginx..."
             docker compose exec -T nginx nginx -s reload
 
             echo "==> Verifying React deployment..."
-            docker compose exec -T web ls /app/staticfiles/react/ || echo "WARNING: staticfiles/react is empty!"
+            docker compose exec -T web ls /app/staticfiles/react/
 
             echo "==> Deploy complete!"
