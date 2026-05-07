@@ -33,8 +33,8 @@ class Command(BaseCommand):
         for username, role, fname, lname in [
             ("operator1", UserRole.OPERATOR, "Иван", "Петров"),
             ("operator2", UserRole.OPERATOR, "Мария", "Сидорова"),
-            ("supervisor1", UserRole.SUPERVISOR, "Алексей", "Козлов"),
-            ("engineer1", UserRole.ENGINEER, "Дмитрий", "Новиков"),
+            ("operator3", UserRole.OPERATOR, "Алексей", "Козлов"),
+            ("operator4", UserRole.OPERATOR, "Дмитрий", "Новиков"),
         ]:
             u, _ = User.objects.get_or_create(
                 username=username,
@@ -63,9 +63,7 @@ class Command(BaseCommand):
             r, _ = Region.objects.get_or_create(name=name, defaults={"code": code})
             regions.append(r)
 
-        # Assign regions to operator
-        users["operator1"].profile.assigned_regions.set([regions[0]])
-        users["operator2"].profile.assigned_regions.set([regions[1], regions[2]])
+        # Assign fields to operators (after fields are created below)
 
         fields_data = [
             (regions[0], "Самотлорское", "SAM", 61.2, 72.5),
@@ -80,6 +78,10 @@ class Command(BaseCommand):
                 defaults=dict(region=region, name=name, latitude=Decimal(str(lat)), longitude=Decimal(str(lon)))
             )
             fields.append(f)
+
+        # Assign fields to operators
+        users["operator1"].profile.assigned_fields.set([fields[0], fields[1]])
+        users["operator2"].profile.assigned_fields.set([fields[2], fields[3]])
 
         sites = []
         for i, field in enumerate(fields):
@@ -241,7 +243,7 @@ class Command(BaseCommand):
             if created:
                 IncidentComment.objects.create(
                     incident=inc,
-                    author=users["supervisor1"],
+                    author=users["operator3"],
                     text="Принято к рассмотрению. Назначен выезд.",
                 )
 

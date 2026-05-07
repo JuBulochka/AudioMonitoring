@@ -36,7 +36,7 @@ class RemoteSessionListView(generics.ListAPIView):
     def get_queryset(self):
         from apps.users.models import UserRole
         qs = RemoteAccessSession.objects.select_related("device", "operator")
-        if self.request.user.role not in (UserRole.ADMIN, UserRole.SUPERVISOR):
+        if not self.request.user.is_admin:
             qs = qs.filter(operator=self.request.user)
         return qs
 

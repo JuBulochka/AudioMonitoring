@@ -7,7 +7,7 @@ class OperatorProfileInline(admin.StackedInline):
     model = OperatorProfile
     can_delete = False
     extra = 0
-    filter_horizontal = ["assigned_regions"]
+    filter_horizontal = ["assigned_fields"]
 
 
 @admin.register(User)

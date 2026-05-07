@@ -287,9 +287,8 @@ def command_detail(request, command_id):
     except DeviceCommand.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 
-    # Only allow access if operator owns it or is admin/supervisor
-    from apps.users.models import UserRole
-    if (request.user.role not in (UserRole.ADMIN, UserRole.SUPERVISOR)
+    # Only allow access if operator owns it or is admin
+    if (not request.user.is_admin
             and cmd.sent_by != request.user):
         return Response({"error": "Forbidden"}, status=403)
 

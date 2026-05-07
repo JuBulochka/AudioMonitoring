@@ -22,7 +22,7 @@ def remote_access_log(request):
         .select_related("device", "operator")
         .order_by("-created_at")
     )
-    if request.user.role not in (UserRole.ADMIN, UserRole.SUPERVISOR):
+    if not request.user.is_admin:
         ses_qs = ses_qs.filter(operator=request.user)
 
     # Build dict: device_id (str) → most recent session

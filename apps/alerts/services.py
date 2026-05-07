@@ -23,16 +23,17 @@ def _get_target_users(device=None):
 
     qs = User.objects.filter(is_active=True)
 
-    always_notified = qs.filter(role__in=[UserRole.ADMIN, UserRole.SUPERVISOR])
+    always_notified = qs.filter(role=UserRole.ADMIN)
 
     if device:
-        region = device.region
-        region_operators = qs.filter(
-            role=UserRole.OPERATOR,
-            profile__assigned_regions=region,
+        # Operators assigned to the field that contains this device
+        field = device.pump_jack.site.field if device.pump_jack_id else None
+        field_operators = (
+            qs.filter(role=UserRole.OPERATOR, profile__assigned_fields=field)
+            if field else qs.none()
         )
         assigned_directly = qs.filter(id=device.assigned_operator_id) if device.assigned_operator_id else qs.none()
-        return (always_notified | region_operators | assigned_directly).distinct()
+        return (always_notified | field_operators | assigned_directly).distinct()
 
     return always_notified
 

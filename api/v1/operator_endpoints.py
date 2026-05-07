@@ -166,9 +166,9 @@ class DeviceListView(generics.ListAPIView):
         user = self.request.user
         # Region-restrict non-admin operators
         if not user.is_admin and hasattr(user, "profile"):
-            assigned = user.profile.assigned_regions.values_list("id", flat=True)
+            assigned = user.profile.assigned_fields.values_list("id", flat=True)
             if assigned:
-                qs = qs.filter(pump_jack__site__field__region__in=assigned)
+                qs = qs.filter(pump_jack__site__field__in=assigned)
 
         return qs
 
