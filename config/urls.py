@@ -19,6 +19,7 @@ urlpatterns = [
     path("incidents/", include("apps.incidents.urls")),
     path("alerts/", include("apps.alerts.urls")),
     path("remote-access/", include("apps.remote_access.urls")),
+    path("reports/", include("apps.reports.urls")),
 
     # REST API v1
     path("api/v1/", include("api.v1.urls")),

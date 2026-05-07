@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Отчёты — АСУТП Мониторинг{% endblock %}
+
+{% block page_title %}Отчёты{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-5 col-lg-7 col-md-9">
+
+    <!-- Generator card -->
+    <div class="card mb-3">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-file-earmark-pdf" style="color:#cf222e;font-size:1.1rem"></i>
+        <span class="fw-semibold">Генерация PDF-отчёта</span>
+      </div>
+      <div class="card-body">
+        <p style="color:var(--txt-muted);font-size:.875rem;margin-bottom:1.25rem">
+          Выберите период — система сформирует и скачает PDF-отчёт со статистикой
+          устройств, инцидентов и аудиоаномалий.
+        </p>
+
+        <form id="reportForm" method="get" action="{% url 'report-pdf' %}">
+          <div class="mb-4">
+            <label class="form-label fw-medium" style="font-size:.85rem">
+              Период отчёта
+            </label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for val, label in periods %}
+              <div>
+                <input type="radio" class="btn-check" name="period"
+                       id="period_{{ val }}" value="{{ val }}"
+                       {% if val == '7' %}checked{% endif %}
+                       autocomplete="off">
+                <label class="btn btn-outline-secondary px-4" for="period_{{ val }}">
+                  {{ label }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <button type="submit" id="downloadBtn"
+                  class="btn w-100 d-flex align-items-center justify-content-center gap-2"
+                  style="background:#cf222e;border-color:#cf222e;color:#fff;font-weight:500">
+            <i class="bi bi-file-earmark-arrow-down fs-5"></i>
+            <span>Скачать PDF-отчёт</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Contents info card -->
+    <div class="card">
+      <div class="card-body" style="font-size:.85rem">
+        <div class="fw-semibold mb-2 d-flex align-items-center gap-2">
+          <i class="bi bi-list-ul" style="color:var(--txt-muted)"></i>
+          Содержание отчёта
+        </div>
+        <ul class="mb-0" style="color:var(--txt-muted);padding-left:1.3rem;line-height:2">
+          <li>Сводная статистика устройств (онлайн / оффлайн / требуют внимания)</li>
+          <li>Разбивка устройств по статусам</li>
+          <li>Аудиоаномалии по типу за выбранный период</li>
+          <li>Список инцидентов за выбранный период (до 50 записей)</li>
+        </ul>
+        <hr style="border-color:var(--border-clr);margin:1rem 0">
+        <div class="d-flex align-items-center gap-2" style="color:var(--txt-muted)">
+          <i class="bi bi-info-circle"></i>
+          <span>Отчёт формируется в реальном времени и содержит актуальные данные на момент скачивания.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const form = document.getElementById('reportForm');
+  const btn  = document.getElementById('downloadBtn');
+
+  form.addEventListener('submit', function () {
+    btn.disabled = true;
+    btn.innerHTML = `
+      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      <span>Формирование отчёта...</span>`;
+    // Re-enable after 8 s (PDF should be ready by then)
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = `
+        <i class="bi bi-file-earmark-arrow-down fs-5"></i>
+        <span>Скачать PDF-отчёт</span>`;
+    }, 8000);
+  });
+}());
+</script>
+{% endblock %}

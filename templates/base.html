@@ -465,6 +465,9 @@
     <a href="{% url 'audio-test' %}" class="{% if 'audio-test' in request.resolver_match.url_name %}active{% endif %}">
       <i class="bi bi-soundwave"></i> Тест аудио
     </a>
+    <a href="{% url 'reports' %}" class="{% if 'report' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-file-earmark-pdf"></i> Отчёты
+    </a>
 
     <div class="sidebar-section">Система</div>
     <a href="/admin/" target="_blank">
