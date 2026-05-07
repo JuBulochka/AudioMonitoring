@@ -33,8 +33,8 @@ jobs:
             echo "==> Checking changed files..."
             CHANGED=$(git diff HEAD~1 HEAD --name-only)
 
-            # Build React frontend if frontend files changed
-            if echo "$CHANGED" | grep -qE '^frontend/'; then
+            # Build React frontend if frontend files changed OR dist doesn't exist yet
+            if echo "$CHANGED" | grep -qE '^frontend/' || [ ! -d "$(pwd)/frontend/dist" ]; then
               echo "==> Building React frontend..."
               docker run --rm \
                 -v $(pwd)/frontend:/app \
@@ -42,6 +42,8 @@ jobs:
                 node:20-alpine \
                 sh -c "npm ci --prefer-offline && npm run build"
               echo "==> React frontend built."
+            else
+              echo "==> React frontend unchanged, skipping build."
             fi
 
             # Rebuild ml-service only if its files changed (TF build is slow)
@@ -55,14 +57,11 @@ jobs:
               echo "==> Rebuilding web + celery..."
               docker compose up -d --build web celery celery-beat
             else
-              echo "==> Restarting web + celery..."
+              echo "==> Restarting web + celery (entrypoint runs migrate + collectstatic + React copy)..."
               docker compose restart web celery celery-beat
             fi
 
-            echo "==> Running migrations..."
-            docker compose exec -T web python manage.py migrate --noinput
-
-            echo "==> Collecting static files + React..."
-            docker compose exec -T web python manage.py collectstatic --noinput
+            echo "==> Waiting for web to be ready..."
+            sleep 10
 
             echo "==> Deploy complete!"
