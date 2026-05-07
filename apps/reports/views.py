@@ -376,6 +376,8 @@ def generate_pdf(request):
                                 fontSize=7.5, fontName=fn, textColor=CLR_DARK,
                                 leading=10, wordWrap='CJK')
         S_CELL_B = ParagraphStyle('CellB', parent=S_CELL, fontName=fn_b)
+        # Header cells: white text on green background
+        S_CELL_HDR = ParagraphStyle('CellHdr', parent=S_CELL_B, textColor=CLR_WHITE)
 
         col_w = [
             page_w * 0.13,   # Дата
@@ -386,11 +388,11 @@ def generate_pdf(request):
         ]
 
         inc_data = [[
-            Paragraph('Дата',        S_CELL_B),
-            Paragraph('Устройство',  S_CELL_B),
-            Paragraph('Критичность', S_CELL_B),
-            Paragraph('Статус',      S_CELL_B),
-            Paragraph('Заголовок',   S_CELL_B),
+            Paragraph('Дата',        S_CELL_HDR),
+            Paragraph('Устройство',  S_CELL_HDR),
+            Paragraph('Критичность', S_CELL_HDR),
+            Paragraph('Статус',      S_CELL_HDR),
+            Paragraph('Заголовок',   S_CELL_HDR),
         ]]
 
         # Colour severity cells via Paragraph style (TEXTCOLOR doesn't apply to Paragraph cells)
@@ -412,7 +414,7 @@ def generate_pdf(request):
                 Paragraph(inc.title[:120], S_CELL),
             ])
 
-        tbl = _make_table(inc_data, col_w, font_size=7.5, repeat_header=True, fn=fn, fn_b=fn_b)
+        tbl = _make_table(inc_data, col_w, header_color=CLR_GREEN, font_size=7.5, repeat_header=True, fn=fn, fn_b=fn_b)
         elems.append(tbl)
     else:
         elems.append(Paragraph('Инциденты за выбранный период отсутствуют.', S_NORM))
