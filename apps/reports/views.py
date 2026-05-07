@@ -25,10 +25,40 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     HRFlowable, Image, Paragraph, SimpleDocTemplate,
     Spacer, Table, TableStyle,
 )
+
+# ── Font registration (Cyrillic support) ──────────────────────────────────────
+_FONT_REGULAR = 'DejaVuSans'
+_FONT_BOLD    = 'DejaVuSans-Bold'
+_FONTS_OK     = False
+
+def _register_fonts():
+    """Register DejaVu TTF fonts for Cyrillic support. Falls back to Helvetica."""
+    global _FONTS_OK
+    if _FONTS_OK:
+        return
+    search_dirs = [
+        '/usr/share/fonts/truetype/dejavu',
+        '/usr/share/fonts/dejavu',
+        '/usr/share/fonts/truetype',
+        '/usr/share/fonts',
+    ]
+    for base in search_dirs:
+        reg  = os.path.join(base, 'DejaVuSans.ttf')
+        bold = os.path.join(base, 'DejaVuSans-Bold.ttf')
+        if os.path.exists(reg) and os.path.exists(bold):
+            try:
+                pdfmetrics.registerFont(TTFont(_FONT_REGULAR, reg))
+                pdfmetrics.registerFont(TTFont(_FONT_BOLD,    bold))
+                _FONTS_OK = True
+                return
+            except Exception:
+                pass
 
 from apps.devices.models import Device, DeviceStatus
 from apps.incidents.models import Incident, IncidentSeverity, IncidentStatus
@@ -111,6 +141,10 @@ def generate_pdf(request):
         anomaly_by_class[cls] = anomaly_by_class.get(cls, 0) + 1
 
     # ── Build PDF ──────────────────────────────────────────────────────────────
+    _register_fonts()
+    fn  = _FONT_REGULAR if _FONTS_OK else 'Helvetica'
+    fn_b = _FONT_BOLD   if _FONTS_OK else 'Helvetica-Bold'
+
     buffer = io.BytesIO()
     page_w = A4[0] - 40 * mm   # usable content width
 
@@ -127,31 +161,31 @@ def generate_pdf(request):
 
     S_H1 = ParagraphStyle(
         'H1', parent=styles['Normal'],
-        fontSize=18, fontName='Helvetica-Bold',
+        fontSize=18, fontName=fn_b,
         textColor=CLR_DARK, spaceAfter=4, alignment=TA_CENTER,
     )
     S_H2 = ParagraphStyle(
         'H2', parent=styles['Normal'],
-        fontSize=12, fontName='Helvetica-Bold',
+        fontSize=12, fontName=fn_b,
         textColor=CLR_DARK, spaceBefore=12, spaceAfter=5,
     )
     S_SUB = ParagraphStyle(
         'Sub', parent=styles['Normal'],
-        fontSize=9, fontName='Helvetica',
+        fontSize=9, fontName=fn,
         textColor=CLR_MUTED, spaceAfter=2, alignment=TA_CENTER,
     )
     S_NORM = ParagraphStyle(
         'Norm', parent=styles['Normal'],
-        fontSize=8.5, fontName='Helvetica', textColor=CLR_DARK,
+        fontSize=8.5, fontName=fn, textColor=CLR_DARK,
     )
     S_SMALL = ParagraphStyle(
         'Small', parent=styles['Normal'],
-        fontSize=7.5, fontName='Helvetica',
+        fontSize=7.5, fontName=fn,
         textColor=CLR_MUTED, spaceAfter=1, alignment=TA_CENTER,
     )
     S_FOOTER = ParagraphStyle(
         'Footer', parent=styles['Normal'],
-        fontSize=7, fontName='Helvetica',
+        fontSize=7, fontName=fn,
         textColor=CLR_MUTED, alignment=TA_CENTER,
     )
 
@@ -213,14 +247,15 @@ def generate_pdf(request):
         ['  — Информационных',              str(info_inc)],
         [f'Аудиоаномалий за {period_label}', str(total_anomalies)],
     ]
-    elems.append(_make_table(summary_data, [page_w * 0.72, page_w * 0.28], header_color=CLR_GREEN))
+    elems.append(_make_table(summary_data, [page_w * 0.72, page_w * 0.28],
+                             header_color=CLR_GREEN, fn=fn, fn_b=fn_b))
     elems.append(Spacer(1, 4 * mm))
 
     # ── Device status breakdown ────────────────────────────────────────────────
     if status_counts:
         elems.append(Paragraph('Статус устройств', S_H2))
         status_data = [['Статус', 'Кол-во']] + [[lbl, str(cnt)] for lbl, cnt in status_counts]
-        elems.append(_make_table(status_data, [page_w * 0.72, page_w * 0.28]))
+        elems.append(_make_table(status_data, [page_w * 0.72, page_w * 0.28], fn=fn, fn_b=fn_b))
         elems.append(Spacer(1, 4 * mm))
 
     # ── Anomalies by class ─────────────────────────────────────────────────────
@@ -229,7 +264,7 @@ def generate_pdf(request):
         anomaly_data = [['Тип аномалии', 'Кол-во пакетов']]
         for cls_val, cnt in sorted(anomaly_by_class.items(), key=lambda x: -x[1]):
             anomaly_data.append([class_label_map.get(cls_val, cls_val), str(cnt)])
-        elems.append(_make_table(anomaly_data, [page_w * 0.72, page_w * 0.28]))
+        elems.append(_make_table(anomaly_data, [page_w * 0.72, page_w * 0.28], fn=fn, fn_b=fn_b))
         elems.append(Spacer(1, 4 * mm))
 
     # ── Incidents table ────────────────────────────────────────────────────────
@@ -278,7 +313,7 @@ def generate_pdf(request):
                 ts_extra.append(('TEXTCOLOR', (2, row_idx), (2, row_idx), CLR_YELLOW))
 
         tbl = _make_table(inc_data, col_w, font_size=8, repeat_header=True,
-                          extra_cmds=ts_extra)
+                          extra_cmds=ts_extra, fn=fn, fn_b=fn_b)
         elems.append(tbl)
     else:
         elems.append(Paragraph('Инциденты за выбранный период отсутствуют.', S_NORM))
@@ -319,8 +354,8 @@ def _find_logo():
 
 
 def _make_table(data, col_widths, header_color=None, font_size=9, repeat_header=False,
-                extra_cmds=None):
-    """Build a styled ReportLab Table."""
+                extra_cmds=None, fn='Helvetica', fn_b='Helvetica-Bold'):
+    """Build a styled ReportLab Table with Cyrillic-capable fonts."""
     if header_color is None:
         header_color = CLR_DARK
 
@@ -328,14 +363,14 @@ def _make_table(data, col_widths, header_color=None, font_size=9, repeat_header=
         # Header
         ('BACKGROUND',    (0, 0), (-1, 0), header_color),
         ('TEXTCOLOR',     (0, 0), (-1, 0), CLR_WHITE),
-        ('FONTNAME',      (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME',      (0, 0), (-1, 0), fn_b),
         ('FONTSIZE',      (0, 0), (-1, 0), font_size),
         ('TOPPADDING',    (0, 0), (-1, 0), 6),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
         ('LEFTPADDING',   (0, 0), (-1, 0), 8),
         ('RIGHTPADDING',  (0, 0), (-1, 0), 8),
         # Data rows
-        ('FONTNAME',      (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTNAME',      (0, 1), (-1, -1), fn),
         ('FONTSIZE',      (0, 1), (-1, -1), font_size),
         ('ROWBACKGROUNDS',(0, 1), (-1, -1), [CLR_WHITE, CLR_ROW_ALT]),
         ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
@@ -359,7 +394,8 @@ def _make_table(data, col_widths, header_color=None, font_size=9, repeat_header=
 def _page_number(canvas, doc):
     """Draw page number at bottom-right of each page."""
     canvas.saveState()
-    canvas.setFont('Helvetica', 7)
+    page_font = _FONT_REGULAR if _FONTS_OK else 'Helvetica'
+    canvas.setFont(page_font, 7)
     canvas.setFillColor(CLR_MUTED)
     canvas.drawRightString(A4[0] - 20 * mm, 10 * mm, f'Страница {canvas.getPageNumber()}')
     canvas.restoreState()
