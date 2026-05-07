@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Подтверждение доступа — {{ device.serial_number }}{% endblock %}
+{% block page_title %}Подтверждение доступа{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-lg-4">
+
+    <!-- Device info -->
+    <div class="card mb-4" style="background:var(--bg-card-header);border:1px solid var(--border-clr)">
+      <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:40px;height:40px;border-radius:8px;background:#21262d;
+                      display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-hdd-rack" style="color:#58a6ff;font-size:1.1rem"></i>
+          </div>
+          <div>
+            <div style="font-family:monospace;font-size:.95rem;color:#58a6ff;font-weight:700">
+              {{ device.serial_number }}
+            </div>
+            <div style="font-size:.78rem;color:var(--txt-muted)">{{ device.name }}</div>
+            <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">
+              <i class="bi bi-geo-alt me-1"></i>{{ field_name }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verification form -->
+    <div class="card" style="border:1px solid var(--border-clr)">
+      <div class="card-header py-3 px-4" style="border-bottom:1px solid var(--border-clr)">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-shield-lock" style="color:#d29922"></i>
+          <span style="font-size:.9rem;font-weight:600">Требуется подтверждение</span>
+        </div>
+      </div>
+      <div class="card-body px-4 py-4">
+
+        <p style="font-size:.85rem;color:var(--txt-muted);margin-bottom:1.2rem;line-height:1.5">
+          Для доступа к устройству введите пароль любой учётной записи оператора,
+          закреплённого за месторождением
+          <strong style="color:var(--txt-primary)">«{{ field_name }}»</strong>.
+        </p>
+
+        {% if error %}
+        <div class="alert py-2 px-3 mb-3 d-flex align-items-center gap-2"
+             style="background:#3d1f1f;border:1px solid #6e2b2b;color:#f85149;font-size:.83rem;border-radius:6px">
+          <i class="bi bi-x-circle-fill flex-shrink-0"></i>
+          {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next_url }}">
+
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.83rem;color:var(--txt-muted)">
+              Пароль оператора
+            </label>
+            <input type="password" name="password"
+                   class="form-control{% if error %} is-invalid{% endif %}"
+                   placeholder="••••••••••••••"
+                   autofocus autocomplete="current-password" required>
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary"
+                    style="background:#1f6feb;border-color:#1f6feb;font-size:.88rem">
+              <i class="bi bi-unlock me-2"></i>Подтвердить доступ
+            </button>
+          </div>
+        </form>
+
+        <div class="mt-3 pt-3 text-center" style="border-top:1px solid var(--border-clr)">
+          <a href="{% url 'remote-access-log' %}"
+             style="font-size:.78rem;color:var(--txt-muted);text-decoration:none">
+            <i class="bi bi-arrow-left me-1"></i>Вернуться к списку устройств
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Info note -->
+    <div class="mt-3 px-1" style="font-size:.75rem;color:var(--txt-muted);line-height:1.5">
+      <i class="bi bi-info-circle me-1"></i>
+      Верификация действует <strong>1 час</strong>.
+      После истечения потребуется повторный ввод пароля.
+    </div>
+
+  </div>
+</div>
+{% endblock %}
