@@ -1,13 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Chart, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
+import { Chart, CategoryScale, LinearScale, BarElement, BarController, Tooltip, Legend } from 'chart.js';
 import AppLayout from '@/components/Layout/AppLayout';
 import Spinner from '@/components/UI/Spinner';
 import { useApi } from '@/hooks/useApi';
 import { getDashboardSummary } from '@/api/dashboard';
 import { timeSince } from '@/utils/formatters';
 
-Chart.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+Chart.register(CategoryScale, LinearScale, BarElement, BarController, Tooltip, Legend);
 
 export default function Dashboard() {
   const { data, loading, error, refetch } = useApi(getDashboardSummary, []);
