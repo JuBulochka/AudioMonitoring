@@ -37,12 +37,13 @@ export default function Login() {
       }}
     >
       <div style={{ width: '100%', maxWidth: 380 }}>
-        {/* Logo */}
+        {/* Логотип */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ fontSize: '2rem' }}>🔥</div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--txt-primary)', margin: '.5rem 0 .25rem' }}>
-            САЮРИ
-          </h1>
+          <img
+            src="/static/img/logo.png"
+            alt="PumpJack Monitor"
+            style={{ maxWidth: 200, height: 'auto', marginBottom: '.75rem' }}
+          />
           <p style={{ fontSize: '.82rem', color: 'var(--txt-muted)', margin: 0 }}>
             Система аудиомониторинга качалок
           </p>
@@ -53,7 +54,6 @@ export default function Login() {
             <form onSubmit={handleSubmit}>
               {error && (
                 <div
-                  className="alert alert-danger"
                   style={{
                     background: 'rgba(248,81,73,.1)',
                     border: '1px solid rgba(248,81,73,.3)',

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { getNotifications, markRead, markAllRead } from '@/api/alerts';
 import { Notification } from '@/types';
@@ -11,7 +10,6 @@ interface TopbarProps {
 }
 
 export default function Topbar({ title, actions }: TopbarProps) {
-  const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -74,26 +72,14 @@ export default function Topbar({ title, actions }: TopbarProps) {
 
   return (
     <header className="topbar">
-      {/* Title */}
-      <h1
-        style={{
-          margin: 0,
-          fontSize: '1rem',
-          fontWeight: 600,
-          color: 'var(--txt-primary)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '.5rem',
-        }}
-      >
-        {title}
-      </h1>
+      {/* Заголовок страницы */}
+      <h1 className="page-title">{title}</h1>
 
-      {/* Right actions */}
+      {/* Правая часть: кастомные действия + колокол уведомлений */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
         {actions}
 
-        {/* Notifications */}
+        {/* Уведомления */}
         <div style={{ position: 'relative' }} ref={dropdownRef}>
           <button
             className="btn btn-sm btn-outline-secondary"
@@ -103,10 +89,7 @@ export default function Topbar({ title, actions }: TopbarProps) {
           >
             <i className="bi bi-bell" />
             {unreadCount > 0 && (
-              <span
-                className="notif-badge"
-                style={{ position: 'absolute', top: -6, right: -6 }}
-              >
+              <span className="notif-badge">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -122,7 +105,7 @@ export default function Topbar({ title, actions }: TopbarProps) {
                 background: 'var(--bg-card)',
                 border: '1px solid var(--border-clr)',
                 borderRadius: 8,
-                zIndex: 200,
+                zIndex: 600,
                 boxShadow: '0 8px 24px rgba(0,0,0,.4)',
               }}
             >
@@ -228,15 +211,6 @@ export default function Topbar({ title, actions }: TopbarProps) {
             </div>
           )}
         </div>
-
-        {/* Theme toggle */}
-        <button
-          className="btn btn-sm btn-outline-secondary"
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-        >
-          <i className={`bi ${theme === 'dark' ? 'bi-sun' : 'bi-moon'}`} />
-        </button>
       </div>
     </header>
   );

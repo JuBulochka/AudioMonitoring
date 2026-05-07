@@ -1,12 +1,14 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 
 interface NavItem {
   to: string;
   icon: string;
   label: string;
   exact?: boolean;
+  external?: boolean;
 }
 
 interface NavSection {
@@ -18,23 +20,31 @@ const NAV: NavSection[] = [
   {
     title: 'Мониторинг',
     items: [
-      { to: '/', icon: 'bi-speedometer2', label: 'Дашборд', exact: true },
+      { to: '/', icon: 'bi-grid-1x2', label: 'Дашборд', exact: true },
       { to: '/devices', icon: 'bi-cpu', label: 'Устройства' },
+      { to: '/map/', icon: 'bi-map', label: 'Карта', external: true },
     ],
   },
   {
     title: 'Работа',
     items: [
       { to: '/incidents', icon: 'bi-exclamation-triangle', label: 'Инциденты' },
+      { to: '/maintenance/', icon: 'bi-tools', label: 'Обслуживание', external: true },
       { to: '/alerts', icon: 'bi-bell', label: 'Уведомления' },
       { to: '/remote-access', icon: 'bi-terminal', label: 'Удалённый доступ' },
     ],
   },
   {
+    title: 'Инструменты',
+    items: [
+      { to: '/audio-test/', icon: 'bi-soundwave', label: 'Тест аудио', external: true },
+    ],
+  },
+  {
     title: 'Система',
     items: [
-      { to: '/admin/', icon: 'bi-shield-lock', label: 'Администрирование' },
-      { to: '/api/docs/', icon: 'bi-file-earmark-code', label: 'API Docs' },
+      { to: '/admin/', icon: 'bi-shield-lock', label: 'Админка', external: true },
+      { to: '/api/docs/', icon: 'bi-code-square', label: 'API Docs', external: true },
     ],
   },
 ];
@@ -42,6 +52,7 @@ const NAV: NavSection[] = [
 export default function Sidebar() {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const isActive = (to: string, exact?: boolean) => {
     if (exact) return location.pathname === to;
@@ -50,20 +61,18 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
-      {/* Logo */}
-      <NavLink to="/" className="sidebar-logo">
-        <i className="bi bi-fire" style={{ color: '#f85149' }} />
-        <span>САЮРИ</span>
+      {/* Логотип */}
+      <NavLink to="/" className="brand">
+        <img src="/static/img/logo.png" alt="PumpJack Monitor" style={{ width: 168, height: 'auto' }} />
       </NavLink>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1, paddingTop: '.5rem' }}>
+      {/* Навигация */}
+      <nav style={{ flex: 1, paddingTop: '.5rem', paddingBottom: '.5rem' }}>
         {NAV.map((section) => (
           <div key={section.title}>
             <div className="sidebar-section">{section.title}</div>
             {section.items.map((item) => {
-              // Внешние ссылки (Django-served pages)
-              if (item.to.startsWith('/api/') || item.to.startsWith('/admin')) {
+              if (item.external) {
                 return (
                   <a key={item.to} href={item.to} className="sidebar-link" target="_blank" rel="noreferrer">
                     <i className={`bi ${item.icon}`} />
@@ -75,7 +84,7 @@ export default function Sidebar() {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={`sidebar-link ${isActive(item.to, item.exact) ? 'active' : ''}`}
+                  className={`sidebar-link${isActive(item.to, item.exact) ? ' active' : ''}`}
                 >
                   <i className={`bi ${item.icon}`} />
                   {item.label}
@@ -86,60 +95,31 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
+      {/* Подвал: пользователь + переключатель темы */}
       <div className="sidebar-footer">
         {user && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '.5rem',
-              marginBottom: '.5rem',
-            }}
-          >
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                background: 'var(--bg-card-header)',
-                border: '1px solid var(--border-clr)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '.75rem',
-                color: 'var(--txt-muted)',
-                flexShrink: 0,
-              }}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ color: 'var(--txt-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user.full_name || user.username}
+            </div>
+            <div style={{ fontSize: '.7rem', color: 'var(--txt-muted)' }}>
+              {user.role_display || user.role}
+            </div>
+            <a
+              href="#"
+              style={{ color: 'var(--txt-muted)', fontSize: '.75rem', textDecoration: 'none' }}
+              onClick={(e) => { e.preventDefault(); logout(); }}
             >
-              <i className="bi bi-person" />
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div
-                style={{
-                  fontSize: '.78rem',
-                  fontWeight: 500,
-                  color: 'var(--txt-primary)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {user.full_name || user.username}
-              </div>
-              <div style={{ fontSize: '.68rem', color: 'var(--txt-muted)' }}>
-                {user.role_display || user.role}
-              </div>
-            </div>
+              Выйти
+            </a>
           </div>
         )}
         <button
-          className="btn btn-sm btn-outline-secondary w-100"
-          onClick={logout}
-          style={{ fontSize: '.75rem' }}
+          className="theme-toggle"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
         >
-          <i className="bi bi-box-arrow-right me-1" />
-          Выйти
+          <i className={`bi ${theme === 'dark' ? 'bi-sun' : 'bi-moon'}`} />
         </button>
       </div>
     </aside>
