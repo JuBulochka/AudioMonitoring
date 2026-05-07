@@ -424,6 +424,111 @@
     html[data-theme="dark"] .alert-warning { background:#4a3000; color:#ffc107; border-color:#6a4800; }
     html[data-theme="dark"] .alert-danger  { background:#4a0e10; color:#f85149; border-color:#6a1c1e; }
     html[data-theme="dark"] .alert-success { background:#1a4731; color:#3fb950; border-color:#2a6347; }
+
+    /* ══════════════════════════════════════════════════════
+       Tablet / Mobile responsive  (≤ 991px)
+       ══════════════════════════════════════════════════════ */
+
+    /* Hamburger toggle — hidden on desktop */
+    .sidebar-toggle {
+      display: none;
+      background: none;
+      border: 1px solid var(--border-clr);
+      color: var(--txt-muted);
+      border-radius: 6px;
+      width: 36px; height: 36px;
+      align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+    .sidebar-toggle:hover {
+      color: var(--txt-primary);
+      background: var(--bg-hover);
+      border-color: var(--txt-muted);
+    }
+
+    /* Offcanvas sidebar for tablet/mobile */
+    .offcanvas-sidebar {
+      background: var(--bg-sidebar) !important;
+      border-right: 1px solid var(--border-clr) !important;
+      width: 260px !important;
+    }
+    .offcanvas-sidebar .offcanvas-header {
+      border-bottom: 1px solid var(--border-clr);
+      padding: .75rem 1rem;
+    }
+    .offcanvas-sidebar .offcanvas-body { padding: 0; }
+    .offcanvas-sidebar nav a {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .65rem 1.25rem;
+      color: var(--sidebar-link);
+      text-decoration: none;
+      font-size: .9rem;
+      transition: color .15s, background .15s;
+    }
+    .offcanvas-sidebar nav a:hover,
+    .offcanvas-sidebar nav a.active {
+      color: var(--txt-primary);
+      background: var(--sidebar-active);
+    }
+    .offcanvas-sidebar nav a i { font-size: 1rem; width: 20px; text-align: center; }
+    .offcanvas-sidebar .sidebar-section {
+      padding: .5rem 1.25rem .25rem;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--txt-dim);
+      margin-top: .5rem;
+    }
+
+    @media (max-width: 991.98px) {
+      /* Hide fixed sidebar, remove its margin */
+      .sidebar        { display: none !important; }
+      .main-wrapper   { margin-left: 0 !important; }
+      .sidebar-toggle { display: flex !important; }
+
+      /* Tighter topbar & content */
+      .topbar        { padding: 0 .75rem; gap: .6rem; }
+      .content-area  { padding: 1rem .75rem; }
+
+      /* Toast position */
+      #toast-container { right: .5rem; left: .5rem; }
+      .pj-toast { min-width: unset; max-width: unset; width: 100%; }
+
+      /* Tables scroll horizontally */
+      .table-responsive-tablet {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Stat cards: 2 columns on tablet */
+      .stat-grid-tablet {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+      .stat-card .value { font-size: 1.6rem; }
+
+      /* Give form controls bigger tap targets */
+      .form-control, .form-select { min-height: 40px; font-size: .9rem; }
+      .btn { min-height: 38px; }
+      .btn-sm { min-height: 32px; font-size: .8rem; }
+
+      /* Reduce card padding */
+      .card-body { padding: .85rem; }
+      .card-header { padding: .6rem .85rem; }
+
+      /* Pagination: bigger tap targets */
+      .page-link { padding: .45rem .7rem; font-size: .85rem; }
+    }
+
+    @media (max-width: 575.98px) {
+      /* Phone: even tighter */
+      .content-area { padding: .75rem .5rem; }
+      .topbar { padding: 0 .5rem; }
+      .topbar .page-title { font-size: .88rem; }
+      .stat-card .value { font-size: 1.35rem; }
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -499,11 +604,86 @@
   </div>
 </aside>
 
+<!-- ===== OFFCANVAS SIDEBAR (tablet / mobile) ===== -->
+<div class="offcanvas offcanvas-start offcanvas-sidebar" tabindex="-1" id="mobileSidebar">
+  <div class="offcanvas-header">
+    <a href="{% url 'dashboard' %}">
+      <img src="{% static 'img/logo.png' %}" alt="Мониторинг" style="height:36px;width:auto">
+    </a>
+    <button type="button" class="btn-close" id="offcanvasClose"
+            data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <nav class="py-2" id="mobileNav">
+      <div class="sidebar-section">Мониторинг</div>
+      <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <i class="bi bi-grid-1x2"></i> Дашборд
+      </a>
+      <a href="{% url 'device-list' %}" class="{% if 'device' in request.resolver_match.url_name and request.resolver_match.url_name != 'device-map' %}active{% endif %}">
+        <i class="bi bi-cpu"></i> Устройства
+      </a>
+      <a href="{% url 'device-map' %}" class="{% if request.resolver_match.url_name == 'device-map' %}active{% endif %}">
+        <i class="bi bi-map"></i> Карта
+      </a>
+
+      <div class="sidebar-section">Работа</div>
+      <a href="{% url 'incident-list' %}" class="{% if 'incident' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-exclamation-triangle"></i> Инциденты
+      </a>
+      <a href="{% url 'maintenance-list' %}" class="{% if request.resolver_match.url_name == 'maintenance-list' %}active{% endif %}">
+        <i class="bi bi-tools"></i> Обслуживание
+      </a>
+      <a href="{% url 'notifications' %}" class="{% if request.resolver_match.url_name == 'notifications' %}active{% endif %}">
+        <i class="bi bi-bell"></i> Уведомления
+      </a>
+      <a href="{% url 'remote-access-log' %}" class="{% if 'remote' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-terminal"></i> Удалённый доступ
+      </a>
+
+      <div class="sidebar-section">Инструменты</div>
+      <a href="{% url 'audio-test' %}" class="{% if 'audio-test' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-soundwave"></i> Тест аудио
+      </a>
+      <a href="{% url 'reports' %}" class="{% if 'report' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-file-earmark-pdf"></i> Отчёты
+      </a>
+
+      <div class="sidebar-section">Система</div>
+      {% if request.user.is_admin %}
+      <a href="{% url 'operator-list' %}" class="{% if 'operator' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-people"></i> Операторы
+      </a>
+      {% endif %}
+      <a href="/admin/" target="_blank"><i class="bi bi-shield-lock"></i> Админка</a>
+      <a href="/api/docs/" target="_blank"><i class="bi bi-code-square"></i> API Docs</a>
+    </nav>
+
+    <!-- User info in offcanvas -->
+    <div class="p-3 mt-2" style="border-top:1px solid var(--border-clr);font-size:.82rem">
+      <div style="color:var(--txt-primary);font-weight:500">
+        {{ request.user.get_full_name|default:request.user.username }}
+      </div>
+      <div style="font-size:.72rem;color:var(--txt-muted);margin-bottom:.4rem">{{ request.user.get_role_display }}</div>
+      <a href="{% url 'logout' %}" style="color:var(--txt-muted);font-size:.8rem;text-decoration:none">
+        <i class="bi bi-box-arrow-right me-1"></i>Выйти
+      </a>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MAIN ===== -->
 <div class="main-wrapper">
   <div class="topbar">
+    <!-- Hamburger: visible on tablet/mobile only -->
+    <button class="sidebar-toggle" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-label="Меню">
+      <i class="bi bi-list"></i>
+    </button>
     <div class="page-title">{% block page_title %}{% endblock %}</div>
     {% block topbar_actions %}{% endblock %}
+    <!-- Theme toggle: always in topbar on tablet (sidebar hidden) -->
+    <button class="theme-toggle d-lg-none" id="themeToggleMobile" title="Переключить тему">
+      <i class="bi bi-moon"></i>
+    </button>
   </div>
 
   <div class="content-area">
@@ -528,17 +708,19 @@
 // ════════════════════════════════════════
 //  Theme toggle
 // ════════════════════════════════════════
-const html          = document.documentElement;
-const themeToggleBtn = document.getElementById('themeToggle');
+const html           = document.documentElement;
+const themeToggleBtn  = document.getElementById('themeToggle');
+const themeToggleMob  = document.getElementById('themeToggleMobile');
 
 function applyTheme(theme) {
   html.setAttribute('data-theme',    theme);
   html.setAttribute('data-bs-theme', theme);
   localStorage.setItem('pj-theme', theme);
-  themeToggleBtn.innerHTML = theme === 'dark'
-    ? '<i class="bi bi-sun"></i>'
-    : '<i class="bi bi-moon"></i>';
-  themeToggleBtn.title = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема';
+  const icon  = theme === 'dark' ? '<i class="bi bi-sun"></i>' : '<i class="bi bi-moon"></i>';
+  const title = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема';
+  themeToggleBtn.innerHTML = icon; themeToggleBtn.title = title;
+  themeToggleMob.innerHTML = icon; themeToggleMob.title = title;
+  document.dispatchEvent(new Event('themeChanged'));
 }
 
 // Init from storage (default: light)
@@ -547,6 +729,19 @@ applyTheme(localStorage.getItem('pj-theme') || 'light');
 themeToggleBtn.addEventListener('click', () => {
   applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 });
+themeToggleMob.addEventListener('click', () => {
+  applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+
+// Offcanvas close btn: invert in dark theme
+function syncOffcanvasClose() {
+  const btn = document.getElementById('offcanvasClose');
+  if (!btn) return;
+  if (html.getAttribute('data-theme') === 'dark') btn.classList.add('btn-close-white');
+  else btn.classList.remove('btn-close-white');
+}
+syncOffcanvasClose();
+document.addEventListener('themeChanged', syncOffcanvasClose);
 
 // ════════════════════════════════════════
 //  Toast helper
