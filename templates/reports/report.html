@@ -8,8 +8,7 @@
 <div class="row justify-content-center">
   <div class="col-xl-6 col-lg-8 col-md-10">
 
-    <!-- Generator card -->
-    <div class="card mb-3">
+    <div class="card">
       <div class="card-header d-flex align-items-center gap-2">
         <i class="bi bi-file-earmark-pdf" style="color:#cf222e;font-size:1.1rem"></i>
         <span class="fw-semibold">Генерация PDF-отчёта</span>
@@ -101,9 +100,7 @@
               <span id="scopeText"></span>
             </span>
             <button type="button" id="clearFilters" class="btn btn-link btn-sm p-0 ms-2"
-                    style="font-size:.78rem;color:var(--txt-muted)">
-              Сбросить
-            </button>
+                    style="font-size:.78rem;color:var(--txt-muted)">Сбросить</button>
           </div>
 
           <button type="submit" id="downloadBtn"
@@ -116,22 +113,6 @@
       </div>
     </div>
 
-    <!-- Info card -->
-    <div class="card">
-      <div class="card-body" style="font-size:.85rem">
-        <div class="fw-semibold mb-2 d-flex align-items-center gap-2">
-          <i class="bi bi-list-ul" style="color:var(--txt-muted)"></i>
-          Содержание отчёта
-        </div>
-        <ul class="mb-0" style="color:var(--txt-muted);padding-left:1.3rem;line-height:2">
-          <li>Сводная статистика устройств (онлайн / оффлайн / требуют внимания)</li>
-          <li>Разбивка устройств по статусам</li>
-          <li>Аудиоаномалии по типу за выбранный период</li>
-          <li>Список инцидентов за выбранный период (до 50 записей)</li>
-        </ul>
-      </div>
-    </div>
-
   </div>
 </div>
 {% endblock %}
@@ -139,123 +120,93 @@
 {% block extra_scripts %}
 <script>
 (function () {
-  // ── Raw data from Django ──────────────────────────────────────────
-  const FIELDS  = {{ fields_json|safe }};
-  const SITES   = {{ sites_json|safe }};
-  const DEVICES = {{ devices_json|safe }};
-
   const selRegion = document.getElementById('sel_region');
   const selField  = document.getElementById('sel_field');
   const selSite   = document.getElementById('sel_site');
   const selDevice = document.getElementById('sel_device');
 
-  // Store all original options (except the "all" placeholder)
-  const allFieldOpts  = Array.from(selField.options).slice(1);
-  const allSiteOpts   = Array.from(selSite.options).slice(1);
-  const allDeviceOpts = Array.from(selDevice.options).slice(1);
+  // Snapshot all original options once (excluding the "all" placeholder at index 0)
+  const allFieldOpts  = Array.from(selField.options).slice(1).map(o => o.cloneNode(true));
+  const allSiteOpts   = Array.from(selSite.options).slice(1).map(o => o.cloneNode(true));
+  const allDeviceOpts = Array.from(selDevice.options).slice(1).map(o => o.cloneNode(true));
 
-  function filterSelect(sel, allOpts, visibleIds, idAttr) {
-    const currentVal = sel.value;
-    sel.innerHTML = sel.options[0].outerHTML; // keep placeholder
-    allOpts.forEach(opt => {
-      const parentId = String(opt.dataset[idAttr] || '');
-      if (!visibleIds || visibleIds.has(parentId)) {
+  /**
+   * Rebuild a <select> showing only options whose data-{dataAttr} === parentVal.
+   * If parentVal is empty, show all options.
+   */
+  function filterSelect(sel, allOpts, parentVal, dataAttr) {
+    const saved = sel.value;
+    // Keep only the placeholder
+    sel.innerHTML = sel.options[0].outerHTML;
+    allOpts.forEach(function (opt) {
+      if (!parentVal || String(opt.dataset[dataAttr] || '') === String(parentVal)) {
         sel.appendChild(opt.cloneNode(true));
       }
     });
-    // Restore selection if still present
-    if (currentVal && [...sel.options].some(o => o.value === currentVal)) {
-      sel.value = currentVal;
+    // Restore previous selection if it's still present
+    if (saved && Array.from(sel.options).some(function (o) { return o.value === saved; })) {
+      sel.value = saved;
     }
   }
 
   function onRegionChange() {
-    const regionId = selRegion.value;
-    // Filter fields
-    const visFieldIds = regionId
-      ? new Set(FIELDS.filter(f => String(f.region_id) === regionId).map(f => String(f.id)))
-      : null;
-    filterSelect(selField, allFieldOpts, visFieldIds, 'region');
-
-    // Reset downstream
-    selField.value  = '';
-    selSite.value   = '';
-    selDevice.value = '';
-    onFieldChange();
-    updateBadge();
+    var regionId = selRegion.value;
+    filterSelect(selField, allFieldOpts, regionId, 'region');
+    selField.value = '';
+    onFieldChange();          // cascades down
   }
 
   function onFieldChange() {
-    const fieldId = selField.value;
-    const visibleSiteIds = fieldId
-      ? new Set(SITES.filter(s => String(s.field_id) === fieldId).map(s => String(s.id)))
-      : null;
-    filterSelect(selSite, allSiteOpts, visibleSiteIds, 'field');
-
-    selSite.value   = '';
-    selDevice.value = '';
-    onSiteChange();
-    updateBadge();
+    var fieldId = selField.value;
+    filterSelect(selSite, allSiteOpts, fieldId, 'field');
+    selSite.value = '';
+    onSiteChange();           // cascades down
   }
 
   function onSiteChange() {
-    const siteId = selSite.value;
-    const visibleDevIds = siteId
-      ? new Set(DEVICES.filter(d => String(d.site_id) === siteId).map(d => String(d.id)))
-      : null;
-    filterSelect(selDevice, allDeviceOpts, visibleDevIds, 'site');
-
+    var siteId = selSite.value;
+    filterSelect(selDevice, allDeviceOpts, siteId, 'site');
     selDevice.value = '';
     updateBadge();
   }
 
   function updateBadge() {
-    const badge     = document.getElementById('scopeBadge');
-    const scopeText = document.getElementById('scopeText');
-    const parts = [];
+    var parts = [];
+    if (selRegion.value) parts.push(selRegion.options[selRegion.selectedIndex].text);
+    if (selField.value)  parts.push(selField.options[selField.selectedIndex].text);
+    if (selSite.value)   parts.push(selSite.options[selSite.selectedIndex].text);
+    if (selDevice.value) parts.push(selDevice.options[selDevice.selectedIndex].text.trim());
 
-    const rOpt = selRegion.options[selRegion.selectedIndex];
-    const fOpt = selField.options[selField.selectedIndex];
-    const sOpt = selSite.options[selSite.selectedIndex];
-    const dOpt = selDevice.options[selDevice.selectedIndex];
-
-    if (selRegion.value) parts.push(rOpt.text);
-    if (selField.value)  parts.push(fOpt.text);
-    if (selSite.value)   parts.push(sOpt.text);
-    if (selDevice.value) parts.push(dOpt.text.trim());
-
+    var badge = document.getElementById('scopeBadge');
     if (parts.length) {
-      scopeText.textContent = parts.join(' / ');
+      document.getElementById('scopeText').textContent = parts.join(' / ');
       badge.style.display = '';
     } else {
       badge.style.display = 'none';
     }
   }
 
-  // Clear all filters
+  selDevice.addEventListener('change', updateBadge);
+
+  selRegion.addEventListener('change', onRegionChange);
+  selField.addEventListener('change',  onFieldChange);
+  selSite.addEventListener('change',   onSiteChange);
+
   document.getElementById('clearFilters').addEventListener('click', function () {
     selRegion.value = '';
     onRegionChange();
   });
 
-  selRegion.addEventListener('change', onRegionChange);
-  selField.addEventListener('change',  onFieldChange);
-  selSite.addEventListener('change',   onSiteChange);
-  selDevice.addEventListener('change', updateBadge);
-
-  // ── Download button loading state ─────────────────────────────────
-  const form = document.getElementById('reportForm');
-  const btn  = document.getElementById('downloadBtn');
-
+  // Loading state on submit
+  var form = document.getElementById('reportForm');
+  var btn  = document.getElementById('downloadBtn');
   form.addEventListener('submit', function () {
     btn.disabled = true;
-    btn.innerHTML = `
-      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-      <span>Формирование отчёта...</span>`;
-    setTimeout(() => {
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span><span>Формирование...</span>';
+    setTimeout(function () {
       btn.disabled = false;
-      btn.innerHTML = `<i class="bi bi-file-earmark-arrow-down fs-5"></i><span>Скачать PDF-отчёт</span>`;
-    }, 10000);
+      btn.innerHTML = '<i class="bi bi-file-earmark-arrow-down fs-5"></i><span>Скачать PDF-отчёт</span>';
+    }, 12000);
   });
 }());
 </script>
