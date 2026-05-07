@@ -247,7 +247,7 @@ def generate_pdf(request):
     S_H1 = ParagraphStyle(
         'H1', parent=styles['Normal'],
         fontSize=18, fontName=fn_b,
-        textColor=CLR_DARK, spaceAfter=4, alignment=TA_CENTER,
+        textColor=CLR_DARK, spaceAfter=6, leading=22, alignment=TA_CENTER,
     )
     S_H2 = ParagraphStyle(
         'H2', parent=styles['Normal'],
@@ -257,7 +257,7 @@ def generate_pdf(request):
     S_SUB = ParagraphStyle(
         'Sub', parent=styles['Normal'],
         fontSize=9, fontName=fn,
-        textColor=CLR_MUTED, spaceAfter=2, alignment=TA_CENTER,
+        textColor=CLR_MUTED, spaceAfter=5, leading=14, alignment=TA_CENTER,
     )
     S_NORM = ParagraphStyle(
         'Norm', parent=styles['Normal'],
@@ -266,7 +266,7 @@ def generate_pdf(request):
     S_SMALL = ParagraphStyle(
         'Small', parent=styles['Normal'],
         fontSize=7.5, fontName=fn,
-        textColor=CLR_MUTED, spaceAfter=1, alignment=TA_CENTER,
+        textColor=CLR_MUTED, spaceAfter=3, leading=11, alignment=TA_CENTER,
     )
     S_FOOTER = ParagraphStyle(
         'Footer', parent=styles['Normal'],
