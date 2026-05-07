@@ -33,8 +33,9 @@ jobs:
             echo "==> Checking changed files..."
             CHANGED=$(git diff HEAD~1 HEAD --name-only)
 
-            # Build React frontend if frontend files changed OR dist doesn't exist yet
-            if echo "$CHANGED" | grep -qE '^frontend/' || [ ! -d "$(pwd)/frontend/dist" ]; then
+            # Build React if: frontend files changed OR dist/index.html missing (first deploy / broken)
+            DIST_INDEX="$(pwd)/frontend/dist/index.html"
+            if echo "$CHANGED" | grep -qE '^frontend/' || [ ! -f "$DIST_INDEX" ]; then
               echo "==> Building React frontend..."
               docker run --rm \
                 -v $(pwd)/frontend:/app \
@@ -57,11 +58,17 @@ jobs:
               echo "==> Rebuilding web + celery..."
               docker compose up -d --build web celery celery-beat
             else
-              echo "==> Restarting web + celery (entrypoint runs migrate + collectstatic + React copy)..."
+              echo "==> Restarting web + celery (entrypoint: migrate + collectstatic + React copy)..."
               docker compose restart web celery celery-beat
             fi
 
-            echo "==> Waiting for web to be ready..."
-            sleep 10
+            echo "==> Waiting for entrypoint to finish..."
+            sleep 15
+
+            echo "==> Reloading nginx with updated config..."
+            docker compose exec -T nginx nginx -s reload
+
+            echo "==> Verifying React deployment..."
+            docker compose exec -T web ls /app/staticfiles/react/ || echo "WARNING: staticfiles/react is empty!"
 
             echo "==> Deploy complete!"
