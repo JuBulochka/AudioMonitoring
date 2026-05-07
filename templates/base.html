@@ -438,10 +438,10 @@
     <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
       <i class="bi bi-grid-1x2"></i> Дашборд
     </a>
-    <a href="{% url 'device-list' %}" class="{% if 'device' in request.resolver_match.url_name %}active{% endif %}">
+    <a href="{% url 'device-list' %}" class="{% if 'device' in request.resolver_match.url_name and request.resolver_match.url_name != 'device-map' %}active{% endif %}">
       <i class="bi bi-cpu"></i> Устройства
     </a>
-    <a href="{% url 'device-map' %}">
+    <a href="{% url 'device-map' %}" class="{% if request.resolver_match.url_name == 'device-map' %}active{% endif %}">
       <i class="bi bi-map"></i> Карта
     </a>
 
@@ -449,19 +449,19 @@
     <a href="{% url 'incident-list' %}" class="{% if 'incident' in request.resolver_match.url_name %}active{% endif %}">
       <i class="bi bi-exclamation-triangle"></i> Инциденты
     </a>
-    <a href="{% url 'maintenance-list' %}">
+    <a href="{% url 'maintenance-list' %}" class="{% if request.resolver_match.url_name == 'maintenance-list' %}active{% endif %}">
       <i class="bi bi-tools"></i> Обслуживание
     </a>
-    <a href="{% url 'notifications' %}" style="position:relative">
+    <a href="{% url 'notifications' %}" class="{% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" style="position:relative">
       <i class="bi bi-bell"></i> Уведомления
       <span id="notif-badge">{{ unread_notifications_count }}</span>
     </a>
-    <a href="{% url 'remote-access-log' %}">
+    <a href="{% url 'remote-access-log' %}" class="{% if 'remote' in request.resolver_match.url_name %}active{% endif %}">
       <i class="bi bi-terminal"></i> Удалённый доступ
     </a>
 
     <div class="sidebar-section">Инструменты</div>
-    <a href="{% url 'audio-test' %}" class="{% if request.resolver_match.url_name == 'audio-test' %}active{% endif %}">
+    <a href="{% url 'audio-test' %}" class="{% if 'audio-test' in request.resolver_match.url_name %}active{% endif %}">
       <i class="bi bi-soundwave"></i> Тест аудио
     </a>
 
