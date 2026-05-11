@@ -16,10 +16,11 @@ import logging
 
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.response import Response
 
 from apps.common.permissions import IsDeviceAuthenticated
+from apps.common.throttling import DeviceRateThrottle
 from apps.remote_access.models import COMMAND_CATALOG, CommandStatus, DeviceCommand
 
 logger = logging.getLogger("apps.remote_access")
@@ -32,6 +33,7 @@ logger = logging.getLogger("apps.remote_access")
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
+@throttle_classes([DeviceRateThrottle])
 def device_poll_commands(request):
     """
     GET /api/v1/device/commands/
@@ -80,6 +82,7 @@ def device_poll_commands(request):
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
+@throttle_classes([DeviceRateThrottle])
 def device_report_result(request, command_id):
     """
     POST /api/v1/device/commands/<id>/result/
