@@ -1,8 +1,4 @@
-"""
-Management command: load_demo_data
-Creates a realistic set of demo data for development/demo purposes.
-Usage: python manage.py load_demo_data [--skip-if-exists]
-"""
+"""Команда заполнения локальной базы демонстрационными данными."""
 import random
 from datetime import timedelta
 from decimal import Decimal
@@ -12,12 +8,14 @@ from django.utils import timezone
 
 
 class Command(BaseCommand):
-    help = "Load demo data for development"
+    help = "Загрузить демонстрационные данные для локальной разработки"
 
     def add_arguments(self, parser):
+        """Добавляет флаг пропуска, если данные уже существуют."""
         parser.add_argument("--skip-if-exists", action="store_true", help="Skip if data already exists")
 
     def handle(self, *args, **options):
+        """Создает пользователей, географию, устройства, пакеты, инциденты и уведомления."""
         from apps.devices.models import Region, Field, Site, PumpJack, Device
         from apps.users.models import User, UserRole
         from apps.users.models import OperatorProfile
@@ -28,7 +26,6 @@ class Command(BaseCommand):
 
         self.stdout.write("Creating demo data...")
 
-        # ---- Users ----
         users = {}
         employee_numbers = {
             "operator1": "OP-0001",
@@ -62,7 +59,6 @@ class Command(BaseCommand):
             OperatorProfile.objects.get_or_create(user=u)
             users[username] = u
 
-        # ---- Geography ----
         regions_data = [
             ("Западная Сибирь", "WS"),
             ("Поволжье", "PV"),
@@ -73,7 +69,6 @@ class Command(BaseCommand):
             r, _ = Region.objects.get_or_create(name=name, defaults={"code": code})
             regions.append(r)
 
-        # Assign fields to operators (after fields are created below)
 
         fields_data = [
             (regions[0], "Самотлорское", "SAM", 61.2, 72.5),
@@ -89,7 +84,6 @@ class Command(BaseCommand):
             )
             fields.append(f)
 
-        # Assign fields to operators
         users["operator1"].profile.assigned_fields.set([fields[0], fields[1]])
         users["operator2"].profile.assigned_fields.set([fields[2], fields[3]])
 
@@ -108,7 +102,6 @@ class Command(BaseCommand):
                 )
                 sites.append(s)
 
-        # ---- Pump Jacks + Devices ----
         devices = []
         device_configs = [
             ("PJ-001", "Качалка №1", sites[0], "101", 61.201, 72.501, True),
@@ -155,7 +148,6 @@ class Command(BaseCommand):
             )
             devices.append(dev)
 
-        # ---- Audio Packets ----
         from apps.packets.models import AudioPacket, AudioClassScore, AudioClass, SeverityLevel
 
         now = timezone.now()
@@ -164,7 +156,6 @@ class Command(BaseCommand):
         for dev in devices:
             for hours_ago in range(0, 24 * 14, 1):  # 14 days hourly
                 recorded_at = now - timedelta(hours=hours_ago)
-                # Randomize severity distribution
                 roll = random.random()
                 if roll < 0.75:
                     severity = SeverityLevel.INFO
@@ -203,7 +194,6 @@ class Command(BaseCommand):
                 )
 
                 if created:
-                    # Build class scores
                     remaining = 1.0
                     scores = {}
                     for cls in packet_classes:
@@ -223,7 +213,6 @@ class Command(BaseCommand):
                         for cls, score in scores.items()
                     ], ignore_conflicts=True)
 
-        # ---- Incidents ----
         from apps.incidents.models import Incident, IncidentType, IncidentStatus, IncidentSeverity, IncidentComment
 
         incident_data = [
@@ -257,7 +246,6 @@ class Command(BaseCommand):
                     text="Принято к рассмотрению. Назначен выезд.",
                 )
 
-        # ---- Alerts / Notifications ----
         from apps.alerts.services import create_alert
         from apps.alerts.models import AlertType, AlertSeverity
 

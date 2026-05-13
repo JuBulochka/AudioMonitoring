@@ -1,11 +1,10 @@
 #!/bin/bash
 set -e
 
-# Always copy fresh sshd_config from image (overrides anything in /etc/ssh volume)
+# Каждый запуск возвращает актуальный sshd_config из образа.
 cp /etc/sshd_config.image /etc/ssh/sshd_config
 
-# authorized_keys is bind-mounted read-only from host.
-# Copy to writable location with correct permissions for sshd.
+# bind-mounted authorized_keys копируется во временный файл с правами, подходящими для sshd.
 KEYS_SRC="/home/tunnel/.ssh/authorized_keys"
 KEYS_WRITABLE="/tmp/authorized_keys"
 
@@ -18,13 +17,12 @@ fi
 chmod 600 "$KEYS_WRITABLE"
 chown tunnel:tunnel "$KEYS_WRITABLE"
 
-# Point sshd_config to the writable copy of authorized_keys
 sed -i "s|AuthorizedKeysFile .*|AuthorizedKeysFile $KEYS_WRITABLE|" /etc/ssh/sshd_config
 
 COUNT=$(grep -cve '^\s*#' "$KEYS_WRITABLE" 2>/dev/null | tr -d ' ' || echo 0)
 echo "==> Loaded $COUNT authorized key(s)"
 
-# Generate host keys if not present (persisted via volume)
+# Host keys хранятся в volume, поэтому генерируются только при первом запуске.
 if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
     echo "==> Generating SSH host keys..."
     ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N "" -q

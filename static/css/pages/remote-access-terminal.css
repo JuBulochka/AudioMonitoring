@@ -10,7 +10,7 @@
     overflow: hidden;
   }
 
-  /* ── Top bar ── */
+
   .topbar {
     display: flex;
     align-items: center;
@@ -69,7 +69,7 @@
   .btn-topbar:hover { border-color: #58a6ff; color: #58a6ff; }
   .btn-topbar.danger:hover { border-color: #f85149; color: #f85149; }
 
-  /* ── Terminal area ── */
+
   #terminal-container {
     flex: 1;
     position: relative;
@@ -81,7 +81,7 @@
     height: 100%;
   }
 
-  /* ── Overlay (connecting / error) ── */
+
   #overlay {
     position: absolute;
     inset: 0;
@@ -120,7 +120,7 @@
   }
   .retry-btn:hover { background: #388bfd; }
 
-  /* ── Device info panel ── */
+
   .device-badge {
     display: flex; align-items: center; gap: 6px;
     background: #21262d;

@@ -8,7 +8,7 @@
     transition: filter .3s;
   }
 
-  /* Тёмная тема — инвертируем тайлы карты через CSS filter */
+
   html[data-theme="dark"] #map {
     filter: invert(1) hue-rotate(180deg) saturate(0.75) brightness(0.85);
   }
@@ -23,7 +23,7 @@
   .map-filters .form-check-label { font-size: .8rem; }
   #device-count { font-size: .78rem; color: var(--txt-muted); }
 
-  /* Легенда */
+
   #map-legend {
     position: absolute;
     bottom: 2rem; right: 1rem;

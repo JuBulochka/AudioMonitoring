@@ -1,4 +1,4 @@
-"""Device Celery tasks."""
+"""Фоновые задачи по состоянию устройств."""
 import logging
 from datetime import timedelta
 
@@ -10,10 +10,7 @@ logger = logging.getLogger("apps.devices")
 
 @shared_task(name="apps.devices.tasks.check_offline_devices")
 def check_offline_devices():
-    """
-    Run every 5 minutes. Mark devices offline if no heartbeat within threshold.
-    Create DEVICE_OFFLINE alerts for newly-offline devices.
-    """
+    """Периодически переводит устройства без heartbeat в офлайн и создает тревоги."""
     from apps.devices.services import detect_offline_devices
     from apps.alerts.services import create_device_offline_alert
     from apps.devices.models import Device
@@ -24,7 +21,6 @@ def check_offline_devices():
         try:
             device = Device.objects.get(id=device_id)
             create_device_offline_alert(device)
-            # Auto-change status to OFFLINE if it was NORMAL
             from apps.devices.models import DeviceStatus
             from apps.devices.services import change_device_status
             if device.status == DeviceStatus.NORMAL:
@@ -43,9 +39,7 @@ def check_offline_devices():
 
 @shared_task(name="apps.devices.tasks.device_health_sweep")
 def device_health_sweep():
-    """
-    Hourly sweep — check for devices with resource warnings from latest heartbeat.
-    """
+    """Проверяет последние heartbeat на перегрев и заполненный диск."""
     from apps.devices.models import Device, DeviceHeartbeat
     from apps.alerts.services import create_disk_critical_alert, create_high_temp_alert
 
@@ -68,7 +62,7 @@ def device_health_sweep():
 
 @shared_task(name="apps.devices.tasks.purge_old_heartbeats")
 def purge_old_heartbeats():
-    """Delete heartbeat records older than 7 days (keep only recent diagnostics)."""
+    """Удаляет старые heartbeat-записи, оставляя только актуальную диагностику."""
     from apps.devices.models import DeviceHeartbeat
     cutoff = timezone.now() - timedelta(days=7)
     count, _ = DeviceHeartbeat.objects.filter(received_at__lt=cutoff).delete()

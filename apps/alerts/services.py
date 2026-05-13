@@ -1,6 +1,4 @@
-"""
-Alert / Notification services — create alerts, fan out to users, push via WebSocket.
-"""
+"""Создание тревог, уведомлений пользователям и отправка событий в WebSocket."""
 import logging
 
 from asgiref.sync import async_to_sync
@@ -15,9 +13,10 @@ logger = logging.getLogger("apps.alerts")
 
 def _get_target_users(device=None):
     """
-    Return users who should receive notifications for a given device.
-    - Admins and supervisors: always.
-    - Operators: if assigned to the device's region or directly to device.
+    Определяет получателей уведомления.
+
+    Администраторы получают все тревоги, операторы — только по своим
+    месторождениям или прямому назначению на устройство.
     """
     from apps.users.models import User, UserRole
 
@@ -26,7 +25,6 @@ def _get_target_users(device=None):
     always_notified = qs.filter(role=UserRole.ADMIN)
 
     if device:
-        # Operators assigned to the field that contains this device
         field = device.pump_jack.site.field if device.pump_jack_id else None
         field_operators = (
             qs.filter(role=UserRole.OPERATOR, profile__assigned_fields=field)
@@ -39,7 +37,7 @@ def _get_target_users(device=None):
 
 
 def _dedup_key(alert_type: str, device_id=None, extra: str = "") -> str:
-    """Create a deduplication key. Prevents duplicate alerts within a time window."""
+    """Собирает ключ, по которому одинаковые тревоги не дублируются."""
     parts = [alert_type]
     if device_id:
         parts.append(str(device_id))
@@ -67,8 +65,10 @@ def create_alert(
     dedup_window_minutes: int = 30,
 ) -> Alert | None:
     """
-    Create an Alert and fan out Notifications to all relevant users.
-    Returns None if a duplicate alert was already sent within the window.
+    Создает тревогу и персональные уведомления для всех получателей.
+
+    Если похожая тревога уже была недавно создана, возвращает None и не шумит
+    повторным уведомлением.
     """
     key = _dedup_key(alert_type, device.id if device else None)
     if dedup_window_minutes and alert_exists_recently(key, dedup_window_minutes):
@@ -86,7 +86,6 @@ def create_alert(
         dedup_key=key,
     )
 
-    # Fan out to users
     target_users = _get_target_users(device)
     notifications = [
         Notification(user=user, alert=alert)
@@ -96,14 +95,13 @@ def create_alert(
 
     logger.info("Alert created: %s [%s] → %d notifications", title, severity, len(notifications))
 
-    # Push via WebSocket to connected browsers
     _push_ws_alert(alert, target_users)
 
     return alert
 
 
 def _push_ws_alert(alert: Alert, users):
-    """Push alert to all connected WebSocket clients for target users."""
+    """Отправляет тревогу во все открытые браузеры целевых пользователей."""
     channel_layer = get_channel_layer()
     if not channel_layer:
         return

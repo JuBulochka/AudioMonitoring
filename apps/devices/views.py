@@ -1,4 +1,4 @@
-"""Device web views."""
+"""Веб-страницы устройств, карты и ручной проверки аудио."""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -13,6 +13,7 @@ from .models import Device, DeviceStatus, Region, Field, Site, PumpJack
 
 @login_required
 def device_list(request):
+    """Выводит список устройств с учетом роли пользователя и фильтров интерфейса."""
     from apps.devices.models import Region
     from apps.users.access import filter_devices_by_user, filter_regions_by_user
 
@@ -23,7 +24,6 @@ def device_list(request):
         request.user,
     ).order_by("-last_seen_at")
 
-    # Filters
     region_id = request.GET.get("region")
     status = request.GET.get("status")
     online = request.GET.get("online")
@@ -58,6 +58,7 @@ def device_list(request):
 
 @login_required
 def device_detail(request, device_id):
+    """Показывает карточку устройства, последние пакеты, инциденты и историю статусов."""
     from apps.packets.models import AudioPacket, SeverityLevel
     from apps.users.access import filter_devices_by_user
 
@@ -74,12 +75,10 @@ def device_detail(request, device_id):
     now = timezone.now()
     since_90 = now - timedelta(days=90)
 
-    # Recent packets
     packets_qs = AudioPacket.objects.filter(
         device=device, recorded_at__gte=since_90
     ).prefetch_related("class_scores").order_by("-recorded_at")
 
-    # Filters on packets
     sev = request.GET.get("severity")
     anomaly = request.GET.get("anomaly")
     from_dt = request.GET.get("from_date")
@@ -107,29 +106,23 @@ def device_detail(request, device_id):
     page_number = request.GET.get("page", 1)
     packets_page = paginator.get_page(page_number)
 
-    # Status history
     status_history = device.status_history.select_related("changed_by").order_by("-changed_at")[:20]
 
-    # Operator comments
     comments = device.comments.select_related("author").order_by("-created_at")[:20]
 
-    # Open incidents
     from apps.incidents.models import Incident, IncidentStatus
     open_incidents = Incident.objects.filter(
         device=device,
         status__in=[IncidentStatus.OPEN, IncidentStatus.ACKNOWLEDGED, IncidentStatus.IN_PROGRESS],
     ).order_by("-created_at")[:5]
 
-    # Latest heartbeat
     latest_hb = device.heartbeats.first()
 
-    # Remote access sessions
     from apps.remote_access.models import RemoteAccessSession
     recent_sessions = RemoteAccessSession.objects.filter(
         device=device
     ).select_related("operator").order_by("-created_at")[:5]
 
-    # Chart data — class score averages for last 7 days
     from apps.packets.models import AudioClassScore
     from django.db import models
     chart_data = {}
@@ -168,16 +161,16 @@ def device_detail(request, device_id):
 
 @login_required
 def device_create(request):
-    from apps.users.access import admin_required as _ar
+    """Создает устройство вместе с регионом, месторождением, кустом и станком."""
     if not request.user.is_admin:
         from django.contrib import messages as _m
         _m.error(request, "Добавление устройств доступно только администраторам.")
         return redirect("device-list")
-    """Custom single-page device creation with full geographic hierarchy."""
+
     if request.method == "POST":
         try:
             with transaction.atomic():
-                # --- Region: pick existing or create new ---
+                # География создается в одной транзакции, чтобы не оставить половину данных.
                 region_id = request.POST.get("region_id")
                 if region_id:
                     region = Region.objects.get(id=region_id)
@@ -191,7 +184,6 @@ def device_create(request):
                         defaults={"name": region_name},
                     )
 
-                # --- Field (месторождение): pick existing or create ---
                 field_id = request.POST.get("field_id")
                 if field_id:
                     field = Field.objects.get(id=field_id)
@@ -205,7 +197,6 @@ def device_create(request):
                         defaults={"name": field_name, "region": region},
                     )
 
-                # --- Site (куст): pick existing or create ---
                 site_id = request.POST.get("site_id")
                 if site_id:
                     site = Site.objects.get(id=site_id)
@@ -219,7 +210,6 @@ def device_create(request):
                         defaults={"name": site_name, "field": field},
                     )
 
-                # --- PumpJack: always create new ---
                 well_number = request.POST.get("well_number", "").strip()
                 pj_name = request.POST.get("pj_name", "").strip() or f"Скв. {well_number}"
                 lat = request.POST.get("latitude", "").strip() or "0"
@@ -235,7 +225,6 @@ def device_create(request):
                     longitude=lon,
                 )
 
-                # --- Device ---
                 device_name = request.POST.get("device_name", "").strip() or f"Pi-{well_number}"
                 serial_number = request.POST.get("serial_number", "").strip() or f"RPI-{well_number}"
                 device = Device.objects.create(
@@ -250,7 +239,6 @@ def device_create(request):
         except Exception as e:
             messages.error(request, f"Ошибка: {e}")
 
-    # GET — render form
     ctx = {
         "regions": Region.objects.all().order_by("name"),
         "fields": Field.objects.select_related("region").all().order_by("name"),
@@ -261,7 +249,7 @@ def device_create(request):
 
 @login_required
 def device_setup(request, device_id):
-    """Setup instructions page shown after device creation."""
+    """Собирает ссылки и параметры для первичной настройки Raspberry Pi."""
     from apps.users.access import filter_devices_by_user
     device = get_object_or_404(
         filter_devices_by_user(Device.objects.all(), request.user),
@@ -284,6 +272,7 @@ def device_setup(request, device_id):
 
 @login_required
 def device_map(request):
+    """Отдает страницу карты с доступными пользователю регионами."""
     from apps.devices.models import Region
     from django.conf import settings as django_settings
     from apps.users.access import filter_regions_by_user
@@ -297,13 +286,13 @@ def device_map(request):
 
 @login_required
 def audio_test(request):
-    """Page for manual audio file testing through ML model."""
+    """Показывает форму ручной проверки аудиофайла через ML-сервис."""
     return render(request, "devices/audio_test.html")
 
 
 @login_required
 def audio_test_analyze(request):
-    """AJAX endpoint: receive audio file, run ML analysis, return JSON."""
+    """Принимает аудиофайл, временно сохраняет его и отправляет в ML-сервис."""
     import os
     import requests as http_requests
     from django.http import JsonResponse
@@ -316,14 +305,12 @@ def audio_test_analyze(request):
     if not audio_file:
         return JsonResponse({"error": "Файл не загружен"}, status=400)
 
-    # Validate file type
     allowed_types = {"audio/wav", "audio/ogg", "audio/mpeg", "audio/flac", "audio/x-wav"}
     allowed_exts  = {".wav", ".ogg", ".mp3", ".flac"}
     ext = os.path.splitext(audio_file.name)[1].lower()
     if ext not in allowed_exts:
         return JsonResponse({"error": f"Неподдерживаемый формат: {ext}"}, status=400)
 
-    # Save to shared media/tmp/ — accessible by both web and ml-service containers
     import uuid
     from django.conf import settings as django_settings
     media_tmp_dir = os.path.join(django_settings.MEDIA_ROOT, "tmp")
@@ -331,14 +318,14 @@ def audio_test_analyze(request):
 
     tmp_filename = f"audiotest_{uuid.uuid4().hex}{ext}"
     tmp_path = os.path.join(media_tmp_dir, tmp_filename)
-    ml_path  = f"/app/media/tmp/{tmp_filename}"   # path as seen by ml-service container
+    ml_path  = f"/app/media/tmp/{tmp_filename}"
 
     try:
         with open(tmp_path, "wb") as f:
             for chunk in audio_file.chunks():
                 f.write(chunk)
 
-        # Call ML service
+        # Web и ML-контейнеры видят один media volume, поэтому в запрос уходит путь внутри контейнера.
         ml_url = getattr(django_settings, "ML_SERVICE_URL", "http://ml-service:8001")
         resp = http_requests.post(
             f"{ml_url}/analyze",
@@ -348,7 +335,6 @@ def audio_test_analyze(request):
         resp.raise_for_status()
         result = resp.json()
 
-        # Add human-readable labels
         CLASS_LABELS = {
             "normal":        "Норма",
             "noise":         "Шум",

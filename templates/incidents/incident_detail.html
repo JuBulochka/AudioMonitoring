@@ -19,10 +19,8 @@
 
 {% block content %}
 <div class="row g-3">
-  <!-- Main -->
-  <div class="col-12 col-xl-8">
-    <!-- Meta -->
-    <div class="card mb-3">
+<div class="col-12 col-xl-8">
+<div class="card mb-3">
       <div class="card-body py-3">
         <div class="row g-3">
           <div class="col-6 col-md-3">
@@ -64,9 +62,7 @@
         {% endif %}
       </div>
     </div>
-
-    <!-- Triggering packet audio -->
-    {% if incident.trigger_packet and incident.trigger_packet.audio_file %}
+{% if incident.trigger_packet and incident.trigger_packet.audio_file %}
     <div class="card mb-3">
       <div class="card-header py-2">
         <span style="font-size:.85rem; font-weight:600"><i class="bi bi-music-note me-2"></i>Аудиозапись-триггер</span>
@@ -80,9 +76,7 @@
       </div>
     </div>
     {% endif %}
-
-    <!-- Timeline / comments -->
-    <div class="card">
+<div class="card">
       <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <span style="font-size:.85rem; font-weight:600"><i class="bi bi-chat-left-text me-2"></i>Комментарии и история</span>
       </div>
@@ -106,9 +100,7 @@
         {% empty %}
         <div class="text-center text-muted py-3" style="font-size:.85rem">Комментариев нет</div>
         {% endfor %}
-
-        <!-- Add comment form -->
-        <div class="px-3 py-3">
+<div class="px-3 py-3">
           <textarea id="commentText" class="form-control form-control-sm" rows="2" placeholder="Добавить комментарий..."></textarea>
           <div class="mt-2 d-flex gap-2">
             <button class="btn btn-sm btn-success" onclick="addComment()">
@@ -119,11 +111,8 @@
       </div>
     </div>
   </div>
-
-  <!-- Right sidebar -->
-  <div class="col-12 col-xl-4">
-    <!-- Maintenance tasks -->
-    <div class="card mb-3">
+<div class="col-12 col-xl-4">
+<div class="card mb-3">
       <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <span style="font-size:.85rem; font-weight:600"><i class="bi bi-tools me-2"></i>Задачи обслуживания</span>
         <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:.72rem" data-bs-toggle="modal" data-bs-target="#taskModal">+ Добавить</button>
@@ -146,9 +135,7 @@
         {% endfor %}
       </div>
     </div>
-
-    <!-- Resolution -->
-    {% if incident.resolved_at %}
+{% if incident.resolved_at %}
     <div class="card mb-3" style="border-color:var(--success)">
       <div class="card-header py-2" style="background:rgba(26,127,55,.1)">
         <span style="font-size:.85rem; font-weight:600; color:var(--success)"><i class="bi bi-check-circle me-2"></i>Устранено</span>
@@ -160,9 +147,7 @@
       </div>
     </div>
     {% endif %}
-
-    <!-- Quick actions -->
-    <div class="card">
+<div class="card">
       <div class="card-header py-2">
         <span style="font-size:.85rem; font-weight:600">Быстрые действия</span>
       </div>
@@ -183,8 +168,6 @@
     </div>
   </div>
 </div>
-
-<!-- Status modal -->
 <div class="modal fade" id="statusModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -215,8 +198,6 @@
     </div>
   </div>
 </div>
-
-<!-- Task modal -->
 <div class="modal fade" id="taskModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">

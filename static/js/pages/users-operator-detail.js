@@ -1,5 +1,4 @@
 (function () {
-  // Update field count badge
   var chks = document.querySelectorAll('.field-chk');
   var countEl = document.getElementById('fieldCount');
   function updateCount() {
@@ -7,7 +6,6 @@
   }
   chks.forEach(function(c) { c.addEventListener('change', updateCount); });
 
-  // Highlight checked field labels
   chks.forEach(function(c) {
     function refresh() {
       var lbl = c.closest('.field-label');

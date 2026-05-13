@@ -1,4 +1,3 @@
-// ── API helpers ────────────────────────────────────────────────────────────
 
 function getCsrf() {
   const m = document.cookie.match(/csrftoken=([^;]+)/);
@@ -6,6 +5,7 @@ function getCsrf() {
 }
 
 async function api(method, url, body) {
+  // Все команды идут через Django API, поэтому CSRF нужен даже для fetch-запросов.
   const opts = {
     method,
     headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
@@ -15,7 +15,6 @@ async function api(method, url, body) {
   return r;
 }
 
-// ── Output panel ───────────────────────────────────────────────────────────
 
 const outputPlaceholder = document.getElementById("outputPlaceholder");
 const outputSpinner     = document.getElementById("outputSpinner");
@@ -42,6 +41,7 @@ function showSpinner(label) {
 }
 
 function showOutput(cmdLabel, status, text, durationSec) {
+  // Вывод команды экранируется перед вставкой в DOM, потому что он приходит с устройства.
   outputPlaceholder.style.display = "none";
   outputSpinner.style.display = "none";
   outputPre.style.display = "";
@@ -63,7 +63,6 @@ function showOutput(cmdLabel, status, text, durationSec) {
     outputDuration.textContent   = durationSec + "с";
   }
 
-  // Colorise: lines starting with ===
   outputPre.innerHTML = text
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
     .split("\n")
@@ -83,7 +82,6 @@ function showOutput(cmdLabel, status, text, durationSec) {
 
 document.getElementById("clearOutputBtn").addEventListener("click", showPlaceholder);
 
-// ── Send command ───────────────────────────────────────────────────────────
 
 let pendingCommandKey   = null;
 let pendingCommandLabel = null;
@@ -113,6 +111,7 @@ document.getElementById("confirmSendBtn").addEventListener("click", () => {
 });
 
 async function sendCommand(key, label) {
+  // После отправки команда не выполняется мгновенно: ее должен забрать edge-клиент на Pi.
   showSpinner(label);
 
   const r = await api("POST", "/api/v1/commands/", {
@@ -131,12 +130,12 @@ async function sendCommand(key, label) {
   activeCommandId = data.id;
   spinnerLabel.textContent = label + " — ожидаем ответа от Pi…";
 
-  // Start polling for result
   clearInterval(pollInterval);
   pollInterval = setInterval(() => pollResult(key, label, activeCommandId), 2000);
 }
 
 async function pollResult(key, label, cmdId) {
+  // Опрос продолжается до финального состояния команды.
   const r = await api("GET", `/api/v1/commands/${cmdId}/`);
   if (!r.ok) return;
 
@@ -153,7 +152,6 @@ async function pollResult(key, label, cmdId) {
   }
 }
 
-// ── History ────────────────────────────────────────────────────────────────
 
 const historyBody  = document.getElementById("historyBody");
 const historyEmpty = document.getElementById("historyEmpty");
@@ -168,6 +166,7 @@ const STATUS_CFG = {
 };
 
 async function loadHistory() {
+  // История обновляется отдельно, чтобы оператор видел старые и текущие команды в одном месте.
   const r = await fetch(`/api/v1/commands/?device=${DEVICE_ID}`);
   if (!r.ok) return;
   const data = await r.json();
@@ -223,7 +222,6 @@ async function loadHistory() {
     </tr>`;
   }).join("");
 
-  // View output buttons
   historyBody.querySelectorAll(".view-output-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const r = await api("GET", `/api/v1/commands/${btn.dataset.id}/`);
@@ -234,7 +232,6 @@ async function loadHistory() {
     });
   });
 
-  // Cancel buttons
   historyBody.querySelectorAll(".cancel-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       await api("POST", `/api/v1/commands/${btn.dataset.id}/cancel/`);
@@ -252,10 +249,8 @@ function escAttr(str) {
 
 document.getElementById("refreshHistoryBtn").addEventListener("click", loadHistory);
 
-// ── Init ───────────────────────────────────────────────────────────────────
 loadHistory();
 
-// Auto-refresh history every 10 seconds if there are running commands
 setInterval(async () => {
   const hasRunning = historyBody.querySelector("tr [data-id]");
   if (hasRunning || activeCommandId) loadHistory();

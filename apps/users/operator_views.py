@@ -23,7 +23,6 @@ from apps.devices.models import Field
 from .access import admin_required
 from .models import OperatorProfile, User, UserRole
 
-# ── Transliteration (Russian → Latin for username generation) ─────────────────
 _TRANSLIT = {
     'а': 'a',  'б': 'b',  'в': 'v',  'г': 'g',  'д': 'd',
     'е': 'e',  'ё': 'e',  'ж': 'zh', 'з': 'z',  'и': 'i',
@@ -64,7 +63,6 @@ def _generate_password(length: int = 14) -> str:
     return ''.join(secrets.choice(chars) for _ in range(length))
 
 
-# ── Views ──────────────────────────────────────────────────────────────────────
 
 @admin_required
 def operator_list(request):
@@ -132,13 +130,10 @@ def operator_create(request):
                 role=UserRole.OPERATOR,
                 employee_number=employee_number,
             )
-            # Store middle name in a comment / notes — use last_name field trick
-            # Actually store full_name parts properly via first/last; middle via profile
             profile, _ = OperatorProfile.objects.get_or_create(user=user)
             if field_ids:
                 profile.assigned_fields.set(Field.objects.filter(id__in=field_ids))
 
-        # Store credentials in session (shown ONCE on next page)
         request.session['new_operator_creds'] = {
             'user_id':         user.pk,
             'employee_number': employee_number,
@@ -199,7 +194,6 @@ def operator_detail(request, pk):
             new_password = _generate_password()
             operator.set_password(new_password)
             operator.save(update_fields=['password'])
-            # Store in session for one-time display
             request.session['new_operator_creds'] = {
                 'user_id':         pk,
                 'employee_number': operator.employee_number,

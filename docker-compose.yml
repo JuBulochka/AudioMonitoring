@@ -107,24 +107,23 @@ services:
     depends_on:
       - web
 
-  # SSH Jump Server — Raspberry Pi connects here via reverse tunnel
-  # Pi SSH:  autossh -R <tunnel_port>:localhost:22  tunnel@<host> -p 2222
+  # SSHD принимает reverse-туннели от Raspberry Pi для веб-терминала.
   sshd:
     build: ./docker/sshd
     restart: unless-stopped
     ports:
-      - "2222:22"                  # Pi SSH registration port
-      - "30001-30020:30001-30020"  # SSH reverse tunnel ports (one per device)
+      - "2222:22"
+      - "30001-30020:30001-30020"
     volumes:
       - ./docker/sshd/authorized_keys:/home/tunnel/.ssh/authorized_keys:ro
       - sshd_host_keys:/etc/ssh
 
-  # ML Audio Analysis Microservice
+  # Отдельный ML-сервис анализирует аудиофайлы из общего media volume.
   ml-service:
     build: ./ml_service
     restart: unless-stopped
     volumes:
-      - media_data:/app/media:ro   # read-only доступ к аудиофайлам
+      - media_data:/app/media:ro
     expose:
       - "8001"
     healthcheck:
@@ -132,7 +131,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s   # YAMNet грузится ~60 сек при первом старте
+      start_period: 120s
 
 volumes:
   postgres_data:

@@ -1,4 +1,4 @@
-"""Remote access web views."""
+"""Страницы удаленного доступа: проверка пароля, терминал и команды."""
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
@@ -6,19 +6,18 @@ from django.contrib import messages
 
 from .models import RemoteAccessSession, COMMAND_CATALOG
 
-# One-time token key — set by verify_access, consumed (deleted) by terminal/commands
 _TOKEN_KEY = "ra_token_{device_id}"
 
 
 def _consume_token(request, device_id):
-    """Return True and delete the token if a valid one exists for this device."""
+    """Забирает одноразовый токен доступа из сессии."""
     key = _TOKEN_KEY.format(device_id=device_id)
     token = request.session.pop(key, None)
     return bool(token)
 
 
 def _issue_token(request, device_id):
-    """Store a one-time access token in session for this device."""
+    """Выдает одноразовый токен для перехода к терминалу или командам."""
     import uuid
     key = _TOKEN_KEY.format(device_id=device_id)
     request.session[key] = str(uuid.uuid4())
@@ -27,9 +26,10 @@ def _issue_token(request, device_id):
 @login_required
 def verify_access(request, device_id):
     """
-    Password gate before terminal / commands.
-    Accepts the password of ANY operator assigned to the device's field.
-    Admins still must verify (they can use their own password).
+    Проверяет пароль перед удаленным доступом.
+
+    Пароль может принадлежать администратору или любому активному оператору,
+    закрепленному за месторождением выбранного устройства.
     """
     from apps.devices.models import Device
     from apps.users.access import filter_devices_by_user
@@ -43,13 +43,10 @@ def verify_access(request, device_id):
         id=device_id, is_active=True,
     )
 
-    # Where to redirect after success
     next_url = request.GET.get("next") or request.POST.get("next", "")
-    # Sanitise: only allow relative URLs to our own views
     if not next_url.startswith("/"):
         next_url = ""
 
-    # No caching — always show the form on fresh entry
 
     error = ""
 
@@ -58,9 +55,8 @@ def verify_access(request, device_id):
 
         field = device.pump_jack.site.field if device.pump_jack_id else None
 
-        # Collect candidate users:
-        # - All admins
-        # - All operators assigned to the device's field
+        # Проверяем не только текущего пользователя, а весь допустимый круг людей:
+        # админы плюс операторы нужного месторождения.
         candidates = User.objects.filter(is_active=True, role=UserRole.ADMIN)
         if field:
             field_ops = User.objects.filter(
@@ -94,7 +90,6 @@ def verify_access(request, device_id):
         else:
             error = "Неверный пароль. Введите пароль любого оператора, закреплённого за этим месторождением."
 
-    # Compute which field/operators are relevant (for the hint)
     field = device.pump_jack.site.field if device.pump_jack_id else None
     field_name = field.name if field else "—"
 
@@ -107,10 +102,7 @@ def verify_access(request, device_id):
 
 
 def _require_token(request, device_id, next_url):
-    """
-    Consume the one-time token. If missing → redirect to verify page.
-    Returns a redirect response or None (if token was valid and consumed).
-    """
+    """Не пускает в терминал/команды без свежей проверки пароля."""
     if not _consume_token(request, device_id):
         from django.urls import reverse
         url = reverse("remote-verify", kwargs={"device_id": device_id})
@@ -120,6 +112,7 @@ def _require_token(request, device_id, next_url):
 
 @login_required
 def remote_access_log(request):
+    """Показывает устройства и последние сессии удаленного доступа."""
     from apps.devices.models import Device
     from apps.users.access import filter_devices_by_user
 
@@ -163,6 +156,7 @@ def remote_access_log(request):
 
 @login_required
 def terminal(request, device_id):
+    """Открывает веб-терминал только после проверки доступа к устройству."""
     from apps.devices.models import Device
     from apps.users.access import filter_devices_by_user
     from apps.common.models import AuditLog
@@ -176,7 +170,6 @@ def terminal(request, device_id):
         id=device_id, is_active=True,
     )
 
-    # ── Security gate (one-time token, no caching) ───────────────────────────
     next_url = reverse("remote-terminal", kwargs={"device_id": device_id})
     redir = _require_token(request, device_id, next_url)
     if redir:
@@ -196,7 +189,7 @@ def terminal(request, device_id):
 
 @login_required
 def commands(request, device_id):
-    """Command dispatch page for a specific device."""
+    """Показывает страницу команд для конкретного устройства."""
     from apps.devices.models import Device
     from apps.users.access import filter_devices_by_user
     from apps.common.models import AuditLog
@@ -210,7 +203,6 @@ def commands(request, device_id):
         id=device_id, is_active=True,
     )
 
-    # ── Security gate (one-time token, no caching) ───────────────────────────
     next_url = reverse("remote-commands", kwargs={"device_id": device_id})
     redir = _require_token(request, device_id, next_url)
     if redir:

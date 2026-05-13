@@ -8,8 +8,6 @@
 <link rel="stylesheet" href="{% static 'css/pages/remote-access-vnc.css' %}">
 </head>
 <body>
-
-<!-- ── Top bar ──────────────────────────────────────────────────────────── -->
 <div class="topbar">
   <div class="topbar-left">
     <span class="status-dot" id="statusDot" style="background:#484f58"></span>
@@ -34,12 +32,8 @@
     </a>
   </div>
 </div>
-
-<!-- ── Main area ────────────────────────────────────────────────────────── -->
 <div id="vnc-container">
-
-  <!-- Connecting overlay -->
-  <div class="overlay" id="overlayConnecting">
+<div class="overlay" id="overlayConnecting">
     <div class="spinner"></div>
     <h2>Подключение к рабочему столу…</h2>
     <p>
@@ -55,9 +49,7 @@
       </ul>
     </div>
   </div>
-
-  <!-- Error overlay -->
-  <div class="overlay hidden" id="overlayError">
+<div class="overlay hidden" id="overlayError">
     <div class="overlay-icon">⚠️</div>
     <h2>Не удалось подключиться</h2>
     <p id="errorMsg">Рабочий стол недоступен. Убедитесь, что устройство онлайн и VNC-туннель установлен.</p>
@@ -73,9 +65,7 @@
     </div>
     <button class="btn-primary" onclick="retryConnection()">🔄 Повторить подключение</button>
   </div>
-
-  <!-- noVNC iframe (hidden until connected) -->
-  <iframe
+<iframe
     id="vnc-frame"
     style="display:none"
     allow="clipboard-read; clipboard-write"

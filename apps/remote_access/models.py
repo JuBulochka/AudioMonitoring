@@ -1,9 +1,4 @@
-"""
-Remote Access models.
-
-RemoteAccessSession — audit record for every web terminal SSH session.
-DeviceCommand       — operator-dispatched command sent to a Pi device.
-"""
+"""Модели удаленного доступа: SSH-сессии и команды, отправленные на устройство."""
 import secrets
 import uuid
 
@@ -12,14 +7,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-# ---------------------------------------------------------------------------
-# Command catalog
-# Commands are defined HERE (server-side) and also mirrored on the Pi.
-# The Pi receives only the command_key; it looks up the shell script locally.
-# ---------------------------------------------------------------------------
 
 COMMAND_CATALOG = {
-    # 1. Просмотр логов и статуса
     "view_logs": {
         "label": "Логи и статус сервиса",
         "description": "systemctl status + последние 100 строк журнала",
@@ -28,7 +17,6 @@ COMMAND_CATALOG = {
         "requires_confirm": False,
         "icon": "bi-journal-text",
     },
-    # 2. Выключение аудио
     "disable_audio": {
         "label": "Отключить отправку аудио",
         "description": "Устройство будет присылать только аналитику без аудиофайла",
@@ -37,7 +25,6 @@ COMMAND_CATALOG = {
         "requires_confirm": True,
         "icon": "bi-mic-mute",
     },
-    # 3. Ручной старт записи прямо сейчас
     "record_now": {
         "label": "Записать прямо сейчас",
         "description": "Немедленно запустить цикл записи без ожидания таймера",
@@ -46,7 +33,6 @@ COMMAND_CATALOG = {
         "requires_confirm": False,
         "icon": "bi-record-circle",
     },
-    # 4. Диагностика звука (USB-камера)
     "audio_diagnostics": {
         "label": "Диагностика звука (USB)",
         "description": "Найти USB-устройство захвата, проверить тестовую запись 3 сек.",
@@ -65,10 +51,7 @@ class RemoteAccessStatus(models.TextChoices):
 
 
 class RemoteAccessSession(models.Model):
-    """
-    Audit record for a web-terminal SSH session.
-    Created when the browser opens the terminal; ended when WebSocket closes.
-    """
+    """Аудитная запись веб-терминала от открытия WebSocket до закрытия SSH-сессии."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     device = models.ForeignKey(
         "devices.Device",
@@ -86,13 +69,10 @@ class RemoteAccessSession(models.Model):
         default=RemoteAccessStatus.ACTIVE,
         db_index=True,
     )
-    # Filled in when SSH tunnel is confirmed active
     tunnel_host = models.CharField(max_length=255, blank=True)
     tunnel_port = models.IntegerField(null=True, blank=True)
-    # Session lifecycle
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
-    # Audit
     operator_ip = models.GenericIPAddressField(null=True, blank=True)
     device_reported_ip = models.GenericIPAddressField(null=True, blank=True)
     session_notes = models.TextField(blank=True)
@@ -137,9 +117,6 @@ class RemoteAccessSession(models.Model):
         self.save(update_fields=["status", "ended_at", "session_notes"])
 
 
-# ---------------------------------------------------------------------------
-# Device Command
-# ---------------------------------------------------------------------------
 
 class CommandStatus(models.TextChoices):
     PENDING   = "pending",   _("Ожидает выполнения")
@@ -152,12 +129,10 @@ class CommandStatus(models.TextChoices):
 
 class DeviceCommand(models.Model):
     """
-    A pre-defined command dispatched by an operator to a specific Pi device.
+    Команда из каталога, которую оператор отправляет на конкретную Raspberry Pi.
 
-    Lifecycle:
-      operator creates → status=pending
-      Pi polls and picks it up → status=running
-      Pi finishes → status=completed/failed/timeout
+    Жизненный цикл простой: оператор создает pending, устройство забирает и
+    переводит в running, затем возвращает completed/failed/timeout.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -175,7 +150,6 @@ class DeviceCommand(models.Model):
         verbose_name=_("Кто отправил"),
     )
 
-    # Command identification
     command_key = models.CharField(
         max_length=64,
         db_index=True,
@@ -187,7 +161,6 @@ class DeviceCommand(models.Model):
         verbose_name=_("Параметры"),
     )
 
-    # Status lifecycle
     status = models.CharField(
         max_length=20,
         choices=CommandStatus.choices,
@@ -196,12 +169,10 @@ class DeviceCommand(models.Model):
         verbose_name=_("Статус"),
     )
 
-    # Result (filled in by Pi)
     output = models.TextField(blank=True, verbose_name=_("Вывод"))
     exit_code = models.IntegerField(null=True, blank=True, verbose_name=_("Код выхода"))
     error_message = models.TextField(blank=True, verbose_name=_("Сообщение об ошибке"))
 
-    # Timing
     created_at    = models.DateTimeField(auto_now_add=True, verbose_name=_("Создано"))
     picked_up_at  = models.DateTimeField(null=True, blank=True, verbose_name=_("Получено устройством"))
     completed_at  = models.DateTimeField(null=True, blank=True, verbose_name=_("Выполнено"))

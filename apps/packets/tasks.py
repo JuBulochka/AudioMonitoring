@@ -1,4 +1,4 @@
-"""Packet Celery tasks."""
+"""Фоновые задачи анализа и агрегации аудиопакетов."""
 import logging
 from datetime import timedelta, date
 
@@ -19,10 +19,9 @@ logger = logging.getLogger("apps.packets")
 )
 def analyze_audio_packet(self, packet_id: str):
     """
-    Call ML service to analyze audio packet, then update DB.
+    Отправляет аудиофайл в ML-сервис и обновляет пакет результатами анализа.
 
-    Triggered automatically after each ingest_packet() call.
-    Retries up to 3 times if ML service is unavailable.
+    При временной недоступности ML-сервиса задача повторяется автоматически.
     """
     from apps.packets.models import AudioPacket, AudioClassScore, PacketStatus
     from apps.packets.services import compute_severity
@@ -39,7 +38,6 @@ def analyze_audio_packet(self, packet_id: str):
         packet.save(update_fields=["status"])
         return
 
-    # Path inside the container (media volume is mounted at /app/media)
     file_path = f"/app/media/{packet.audio_file.name}"
     ml_url    = getattr(settings, "ML_SERVICE_URL", "http://ml-service:8001")
     timeout   = getattr(settings, "ML_SERVICE_TIMEOUT", 60)
@@ -63,7 +61,6 @@ def analyze_audio_packet(self, packet_id: str):
         packet.save(update_fields=["status"])
         return
 
-    # ── Обновляем пакет результатами ML ───────────────────
     class_scores   = result.get("class_scores", {})
     severity, dominant_class, dominant_score = compute_severity(class_scores)
     is_anomaly = result.get("is_anomaly", False) or dominant_class != "normal"
@@ -87,7 +84,6 @@ def analyze_audio_packet(self, packet_id: str):
         "dominant_class_score", "status", "raw_analysis",
     ])
 
-    # ── Сохраняем class scores ────────────────────────────
     from apps.packets.services import CRITICAL_CLASSES, WARNING_CLASSES
     from apps.packets.models import AudioClass
 
@@ -109,7 +105,6 @@ def analyze_audio_packet(self, packet_id: str):
             threshold_exceeded=exceeded,
         ))
 
-    # Удаляем старые (от device-analysis) и записываем ML-результаты
     AudioClassScore.objects.filter(packet=packet).delete()
     AudioClassScore.objects.bulk_create(score_objs, ignore_conflicts=True)
 
@@ -118,7 +113,6 @@ def analyze_audio_packet(self, packet_id: str):
         packet_id, is_anomaly, severity, dominant_class, dominant_score,
     )
 
-    # ── Триггер инцидентов ────────────────────────────────
     if is_anomaly:
         try:
             from apps.incidents.tasks import process_anomalous_packet
@@ -129,7 +123,7 @@ def analyze_audio_packet(self, packet_id: str):
 
 @shared_task(name="apps.packets.tasks.purge_old_packets")
 def purge_old_packets():
-    """Delete audio packets and files older than AUDIO_RETENTION_DAYS."""
+    """Удаляет аудиопакеты старше настроенного срока хранения."""
     from apps.packets.services import purge_old_packets as _purge
     count = _purge()
     return count
@@ -137,10 +131,7 @@ def purge_old_packets():
 
 @shared_task(name="apps.packets.tasks.aggregate_daily_metrics")
 def aggregate_daily_metrics(target_date: str = None):
-    """
-    Build or refresh DailyDeviceMetrics for target_date (default: yesterday).
-    Called nightly at 00:05 UTC.
-    """
+    """Пересчитывает дневные агрегаты по устройствам для отчетов и дашборда."""
     from apps.packets.models import AudioPacket, DailyDeviceMetrics
     from apps.devices.models import Device, DeviceHeartbeat
 
@@ -153,7 +144,6 @@ def aggregate_daily_metrics(target_date: str = None):
     day_start = timezone.datetime.combine(d, timezone.datetime.min.time()).replace(tzinfo=timezone.utc)
     day_end = day_start + timedelta(days=1)
 
-    # Get all devices that had packets or heartbeats that day
     device_ids = set(
         AudioPacket.objects.filter(recorded_at__gte=day_start, recorded_at__lt=day_end)
         .values_list("device_id", flat=True)
@@ -172,7 +162,6 @@ def aggregate_daily_metrics(target_date: str = None):
         critical_count = qs.filter(severity="critical").count()
         warning_count = qs.filter(severity="warning").count()
 
-        # Per-class counts
         class_counts = {}
         from apps.packets.models import AudioClassScore
         for row in (
@@ -183,7 +172,6 @@ def aggregate_daily_metrics(target_date: str = None):
         ):
             class_counts[row["audio_class"]] = row["cnt"]
 
-        # Averages from packets
         aggs = qs.aggregate(
             avg_cpu_temp=models.Avg("device_cpu_temp"),
             avg_cpu_usage=models.Avg("device_cpu_usage"),

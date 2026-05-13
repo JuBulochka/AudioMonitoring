@@ -1,6 +1,5 @@
 ymaps.ready(function () {
 
-  // ── Карта ────────────────────────────────────────────
   const myMap = new ymaps.Map('map', {
     center: [55.75, 37.61],
     zoom: 5,
@@ -9,7 +8,6 @@ ymaps.ready(function () {
     suppressMapOpenBlock: true,
   });
 
-  // ── Кластеризатор (встроенный Яндекс) ────────────────
   const clusterer = new ymaps.Clusterer({
     preset: 'islands#invertedBlueClusterIcons',
     clusterDisableClickZoom: false,
@@ -17,8 +15,8 @@ ymaps.ready(function () {
   });
   myMap.geoObjects.add(clusterer);
 
-  // ── SVG-иконка маркера ───────────────────────────────
   function makeCircleSvg(color, isOnline) {
+    // Маркер создается как inline SVG, чтобы цвет статуса не требовал отдельных файлов.
     const opacity = isOnline ? 1 : 0.5;
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18">` +
@@ -28,7 +26,6 @@ ymaps.ready(function () {
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
 
-  // ── Контент balloon (появляется прямо у маркера) ─────
   function makeBalloonContent(d) {
     const lastSeen    = d.last_seen_at
       ? new Date(d.last_seen_at).toLocaleString('ru-RU')
@@ -60,13 +57,13 @@ ymaps.ready(function () {
       </div>`;
   }
 
-  // ── Загрузка устройств ────────────────────────────────
   let moveTimer;
 
   window.loadDevices = function () {
+    // API получает текущие границы карты, поэтому сервер отдает только видимую область.
     myMap.balloon.close();
 
-    const bounds = myMap.getBounds();   // [[minLat,minLng],[maxLat,maxLng]]
+    const bounds = myMap.getBounds();
     const params = new URLSearchParams();
     params.set('sw_lat', bounds[0][0].toFixed(6));
     params.set('sw_lng', bounds[0][1].toFixed(6));
@@ -112,19 +109,16 @@ ymaps.ready(function () {
       .catch(e => console.error('Map load error:', e));
   };
 
-  // Перезагрузка при движении карты
   myMap.events.add('boundschange', function () {
     clearTimeout(moveTimer);
     moveTimer = setTimeout(loadDevices, 300);
   });
 
-  // Фильтры
   ['f-region', 'f-status'].forEach(id =>
     document.getElementById(id).addEventListener('change', loadDevices));
   ['f-anomaly', 'f-offline'].forEach(id =>
     document.getElementById(id).addEventListener('change', loadDevices));
 
-  // Первая загрузка
   loadDevices();
 
 });

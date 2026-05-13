@@ -10,7 +10,7 @@
     overflow: hidden;
   }
 
-  /* ── Top bar ── */
+
   .topbar {
     display: flex;
     align-items: center;
@@ -69,7 +69,7 @@
   }
   .topbar-btn:hover { background: #30363d; color: #e6edf3; }
 
-  /* ── vnc iframe ── */
+
   #vnc-container {
     flex: 1;
     position: relative;
@@ -84,7 +84,7 @@
     display: block;
   }
 
-  /* ── Overlay screens ── */
+
   .overlay {
     position: absolute;
     inset: 0;

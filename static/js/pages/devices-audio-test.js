@@ -1,9 +1,7 @@
-// ── State ─────────────────────────────────────────────────
 var selectedFile  = null;
 var elapsedTimer  = null;
 var stepTimers    = [];
 
-// ── Elements ──────────────────────────────────────────────
 var fileInput    = document.getElementById('audio-file-input');
 var filePickArea = document.getElementById('file-pick-area');
 var fileNameEl   = document.getElementById('file-name');
@@ -13,7 +11,6 @@ var emptyState   = document.getElementById('empty-state');
 var loadingState = document.getElementById('loading-state');
 var resultsArea  = document.getElementById('results-area');
 
-// ── File selection ────────────────────────────────────────
 fileInput.addEventListener('change', function() {
   if (fileInput.files && fileInput.files.length > 0) {
     selectedFile = fileInput.files[0];
@@ -24,7 +21,6 @@ fileInput.addEventListener('change', function() {
   }
 });
 
-// Drag & drop
 filePickArea.addEventListener('dragover', function(e) { e.preventDefault(); filePickArea.style.borderColor='#0969da'; });
 filePickArea.addEventListener('dragleave', function() { filePickArea.style.borderColor=''; });
 filePickArea.addEventListener('drop', function(e) {
@@ -40,11 +36,9 @@ filePickArea.addEventListener('drop', function(e) {
   }
 });
 
-// ── Analyze button ────────────────────────────────────────
 analyzeBtn.addEventListener('click', function() {
   if (!selectedFile) return;
 
-  // Show loading
   emptyState.style.display = 'none';
   resultsArea.style.display = 'none';
   loadingState.classList.remove('d-none');
@@ -52,7 +46,6 @@ analyzeBtn.addEventListener('click', function() {
   uploadError.classList.add('d-none');
   startProgress();
 
-  // Build form data
   var formData = new FormData();
   formData.append('audio_file', selectedFile);
   formData.append('csrfmiddlewaretoken', csrfToken);
@@ -87,7 +80,6 @@ analyzeBtn.addEventListener('click', function() {
   });
 });
 
-// ── Progress animation ────────────────────────────────────
 var STEP_SCHEDULE = [
   { id: 'step-2', at: 2000,  pct: 25 },
   { id: 'step-3', at: 6000,  pct: 50 },
@@ -112,7 +104,6 @@ function activateStep(id) {
 }
 
 function startProgress() {
-  // Reset all steps
   ['step-1','step-2','step-3','step-4','step-5'].forEach(function(id, i) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -155,13 +146,11 @@ function stopProgress() {
   bar.style.background = '#28a745';
 }
 
-// ── Error helper ──────────────────────────────────────────
 function showError(msg) {
   uploadError.textContent = msg;
   uploadError.classList.remove('d-none');
 }
 
-// ── Render results ────────────────────────────────────────
 var BAR_COLORS = {
   normal:'#28a745', knock:'#dc3545', squeak:'#fd7e14',
   whistle:'#0dcaf0', speech:'#6f42c1', grinding:'#e83e8c',
@@ -202,7 +191,6 @@ function renderResults(data) {
   document.getElementById('meta-rawscore').textContent  = data.raw_score  != null ? data.raw_score  : '—';
   document.getElementById('meta-threshold').textContent = data.threshold  != null ? data.threshold  : '—';
 
-  // Class scores
   var sc = document.getElementById('class-scores-container');
   sc.innerHTML = '';
   var scores = data.class_scores || {};
@@ -217,7 +205,6 @@ function renderResults(data) {
     sc.appendChild(row);
   });
 
-  // YAMNet groups
   var gc = document.getElementById('yamnet-groups-container');
   gc.innerHTML = '';
   var groups = data.yamnet_groups || {};
@@ -231,7 +218,6 @@ function renderResults(data) {
     gc.appendChild(row);
   });
 
-  // Top5
   var tc = document.getElementById('yamnet-top5-container');
   tc.innerHTML = '';
   (data.yamnet_top5 || []).forEach(function(item) {

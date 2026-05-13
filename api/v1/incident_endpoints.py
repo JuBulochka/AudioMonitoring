@@ -11,7 +11,6 @@ from apps.common.pagination import StandardResultsSetPagination
 from apps.common.permissions import IsOperatorOrAbove
 
 
-# ── Nested reference serializers ───────────────────────────────────────────────
 
 class DeviceRefSerializer(serializers.Serializer):
     id = serializers.UUIDField()
@@ -28,7 +27,6 @@ class UserRefSerializer(serializers.Serializer):
         return obj.get_full_name() or obj.username
 
 
-# ── Incident serializer ────────────────────────────────────────────────────────
 
 class IncidentSerializer(serializers.ModelSerializer):
     device = DeviceRefSerializer(read_only=True)
@@ -154,7 +152,6 @@ class IncidentStatusUpdateView(APIView):
 
         incident.save()
 
-        # Auto-add a system comment
         comment_text = data.get("comment") or f"Статус изменён: {old_status} → {data['status']}"
         IncidentComment.objects.create(
             incident=incident,
@@ -210,7 +207,6 @@ class MaintenanceTaskCreateSerializer(serializers.Serializer):
     priority = serializers.ChoiceField(choices=MaintenanceTask.Priority.choices, default="medium")
     assigned_to_id = serializers.IntegerField(required=False, allow_null=True)
     scheduled_date = serializers.DateTimeField(required=False, allow_null=True)
-    # For standalone creation (not from incident)
     device_id = serializers.UUIDField(required=False, allow_null=True)
 
 

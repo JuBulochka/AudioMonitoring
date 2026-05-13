@@ -32,15 +32,9 @@ function loadVNC() {
   overlayError.classList.add("hidden");
   vncFrame.style.display = "none";
 
-  // Build noVNC URL with token routing
-  // noVNC is proxied at /novnc/ by nginx
   const wsProto = location.protocol === "https:" ? "wss" : "ws";
   const wsHost  = location.host;
 
-  // noVNC URL parameters:
-  //   path     — websockify WebSocket path
-  //   token    — our device UUID (routes to correct VNC port)
-  //   autoconnect=true, resize=scale, password — optional
   const params = new URLSearchParams({
     path:        `novnc/websockify?token=${VNC_TOKEN}`,
     autoconnect: "true",
@@ -54,19 +48,15 @@ function loadVNC() {
   vncFrame.src = novncUrl;
   vncFrame.style.display = "block";
 
-  // Listen for iframe load
   vncFrame.onload = () => {
-    // Give noVNC a moment to attempt WebSocket connection
     setTimeout(() => {
       try {
-        // Try to detect if noVNC loaded OK (same-origin check)
         const doc = vncFrame.contentDocument || vncFrame.contentWindow.document;
         if (doc && doc.readyState === "complete") {
           overlayConnecting.classList.add("hidden");
           setStatus("connected");
         }
       } catch (e) {
-        // Cross-origin or other issue
         overlayConnecting.classList.add("hidden");
         setStatus("connected");
       }
@@ -77,7 +67,6 @@ function loadVNC() {
     showError("Не удалось загрузить noVNC. Убедитесь, что контейнер novnc запущен.");
   };
 
-  // Timeout: if frame doesn't load in 15 sec, show error
   setTimeout(() => {
     if (overlayConnecting && !overlayConnecting.classList.contains("hidden")) {
       showError(
@@ -92,5 +81,4 @@ function retryConnection() {
   loadVNC();
 }
 
-// Start connection on page load
 loadVNC();

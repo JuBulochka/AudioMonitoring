@@ -1,12 +1,4 @@
-"""
-User models — custom User with two roles: admin and operator.
-
-Admin:
-  - Full access, manages devices and operator accounts
-Operator:
-  - Read/monitor access, filtered by assigned oil fields (месторождения)
-  - Cannot add/edit/delete devices or manage accounts
-"""
+"""Пользователи системы: администраторы и операторы с привязкой к месторождениям."""
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -18,7 +10,7 @@ class UserRole(models.TextChoices):
 
 
 class User(AbstractUser):
-    """Extended user with role-based access control."""
+    """Расширяет стандартного пользователя Django ролью и служебными полями."""
 
     email = models.EmailField(_("email address"), unique=True, blank=True, default="")
     role = models.CharField(
@@ -27,7 +19,6 @@ class User(AbstractUser):
         default=UserRole.OPERATOR,
         db_index=True,
     )
-    # Unique employee identifier, auto-generated on creation (e.g. OP-0001)
     employee_number = models.CharField(
         max_length=20, unique=True, blank=True,
         verbose_name=_("Табельный номер"),
@@ -57,17 +48,20 @@ class User(AbstractUser):
 
     @property
     def is_admin(self):
+        """Проверяет, что пользователь имеет полный административный доступ."""
         return self.role == UserRole.ADMIN
 
     @property
     def full_name(self):
+        """Возвращает ФИО, а если оно не заполнено — логин."""
         return self.get_full_name() or self.username
 
     def get_allowed_field_ids(self):
         """
-        Returns set of Field IDs this user may access.
-        Returns None for admin (all fields allowed).
-        Returns empty set if operator has no assigned fields.
+        Возвращает ID месторождений, доступных пользователю.
+
+        None означает администратора без ограничений, пустое множество — оператор
+        без назначений, которому нельзя показывать производственные объекты.
         """
         if self.is_admin:
             return None
@@ -78,24 +72,21 @@ class User(AbstractUser):
 
 
 class OperatorProfile(models.Model):
-    """Extended profile for operators — field assignment and notification preferences."""
+    """Хранит назначенные месторождения и настройки уведомлений оператора."""
 
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="profile"
     )
-    # Fields (месторождения) this operator can access
     assigned_fields = models.ManyToManyField(
         "devices.Field",
         blank=True,
         related_name="assigned_operators",
         verbose_name=_("Назначенные месторождения"),
     )
-    # Notification settings
     notify_critical = models.BooleanField(default=True)
     notify_offline  = models.BooleanField(default=True)
     notify_warning  = models.BooleanField(default=False)
     notify_email    = models.BooleanField(default=False)
-    # Meta
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

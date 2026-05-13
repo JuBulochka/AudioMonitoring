@@ -24,9 +24,7 @@
         </p>
 
         <form id="reportForm" method="get" action="{% url 'report-pdf' %}">
-
-          <!-- Period -->
-          <div class="mb-4">
+<div class="mb-4">
             <label class="form-label fw-medium" style="font-size:.85rem">Период отчёта</label>
             <div class="d-flex flex-wrap gap-2">
               {% for val, label in periods %}
@@ -41,15 +39,11 @@
           </div>
 
           <hr style="border-color:var(--border-clr);margin:0 0 1.25rem">
-
-          <!-- Filters -->
-          <div class="mb-3">
+<div class="mb-3">
             <label class="form-label fw-medium" style="font-size:.85rem">
               Выборка <span style="color:var(--txt-muted);font-weight:400">(необязательно)</span>
             </label>
-
-            <!-- Region -->
-            <div class="mb-2">
+<div class="mb-2">
               <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Регион</label>
               <select class="form-select form-select-sm" id="sel_region" name="region_id">
                 <option value="">— Все регионы</option>
@@ -58,9 +52,7 @@
                 {% endfor %}
               </select>
             </div>
-
-            <!-- Field -->
-            <div class="mb-2">
+<div class="mb-2">
               <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Месторождение</label>
               <select class="form-select form-select-sm" id="sel_field" name="field_id">
                 <option value="">— Все месторождения</option>
@@ -69,9 +61,7 @@
                 {% endfor %}
               </select>
             </div>
-
-            <!-- Site -->
-            <div class="mb-2">
+<div class="mb-2">
               <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Куст скважин</label>
               <select class="form-select form-select-sm" id="sel_site" name="site_id">
                 <option value="">— Все кусты</option>
@@ -80,9 +70,7 @@
                 {% endfor %}
               </select>
             </div>
-
-            <!-- Devices — multi-select with checkboxes -->
-            <div class="mb-0">
+<div class="mb-0">
               <label class="form-label" style="font-size:.8rem;color:var(--txt-muted);margin-bottom:.3rem">Устройство</label>
               <div class="dropdown" id="deviceDropdown">
                 <button type="button" class="btn btn-sm w-100" id="deviceToggleBtn"
@@ -91,8 +79,7 @@
                   <i class="bi bi-chevron-down" style="font-size:.65rem;opacity:.6"></i>
                 </button>
                 <div class="dropdown-menu device-dropdown-menu" id="deviceMenu">
-                  <!-- "Select all" row -->
-                  <label class="dev-item" style="border-bottom:1px solid var(--border-clr);margin-bottom:3px;padding-bottom:7px">
+<label class="dev-item" style="border-bottom:1px solid var(--border-clr);margin-bottom:3px;padding-bottom:7px">
                     <input type="checkbox" class="form-check-input" id="chkAll">
                     <span style="color:var(--txt-muted);font-style:italic">Все устройства</span>
                   </label>
@@ -109,9 +96,7 @@
               </div>
             </div>
           </div>
-
-          <!-- Scope badge -->
-          <div id="scopeBadge" class="mb-3 mt-2" style="display:none">
+<div id="scopeBadge" class="mb-3 mt-2" style="display:none">
             <span class="badge rounded-pill"
                   style="background:var(--bg-card-header);color:var(--txt-muted);
                          border:1px solid var(--border-clr);font-size:.78rem;font-weight:400;padding:.35em .75em">

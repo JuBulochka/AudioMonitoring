@@ -1,14 +1,4 @@
-"""
-PDF report generation for АСУТП Мониторинг.
-
-Generates a structured PDF with:
-- Cover header: logo + title + period + generation info
-- Summary stats table (devices, incidents, anomalies)
-- Device status breakdown
-- Audio anomalies by class
-- Incidents list (up to 50 most recent)
-- Page numbers footer
-"""
+"""Генерация PDF-отчетов по устройствам, инцидентам и аудиоаномалиям."""
 import io
 import os
 from datetime import timedelta
@@ -32,13 +22,12 @@ from reportlab.platypus import (
     Spacer, Table, TableStyle,
 )
 
-# ── Font registration (Cyrillic support) ──────────────────────────────────────
 _FONT_REGULAR = 'DejaVuSans'
 _FONT_BOLD    = 'DejaVuSans-Bold'
 _FONTS_OK     = False
 
 def _register_fonts():
-    """Register DejaVu TTF fonts for Cyrillic support. Falls back to Helvetica."""
+    """Подключает шрифты с кириллицей для корректного PDF."""
     global _FONTS_OK
     if _FONTS_OK:
         return
@@ -64,7 +53,6 @@ from apps.devices.models import Device, DeviceStatus, Region, Field, Site
 from apps.incidents.models import Incident, IncidentSeverity, IncidentStatus
 from apps.packets.models import AudioClass, AudioPacket
 
-# ── Period config ──────────────────────────────────────────────────────────────
 PERIOD_CHOICES = {
     '1':  ('1 день',   1),
     '7':  ('7 дней',  7),
@@ -72,7 +60,6 @@ PERIOD_CHOICES = {
     '30': ('30 дней', 30),
 }
 
-# ── Brand palette ──────────────────────────────────────────────────────────────
 CLR_GREEN       = colors.HexColor('#1a7f37')
 CLR_DARK        = colors.HexColor('#1f2328')
 CLR_MUTED       = colors.HexColor('#636c76')
@@ -83,13 +70,11 @@ CLR_YELLOW      = colors.HexColor('#9a6700')
 CLR_WHITE       = colors.white
 
 
-# ── Views ──────────────────────────────────────────────────────────────────────
 
 @login_required
 def report_page(request):
     periods = [(k, v[0]) for k, v in PERIOD_CHOICES.items()]
 
-    # Limit filter options for operators to their assigned fields only
     allowed_field_ids = request.user.get_allowed_field_ids()  # None = admin (all)
 
     if allowed_field_ids is None:
@@ -108,7 +93,6 @@ def report_page(request):
         .order_by('serial_number')
         .values('id', 'serial_number', 'name', 'pump_jack__site_id')
     )
-    # Normalize UUID to str for JSON serialization
     for d in devices:
         d['id'] = str(d['id'])
         d['site_id'] = str(d.pop('pump_jack__site_id') or '')
@@ -137,13 +121,11 @@ def generate_pdf(request):
     now       = timezone.now()
     date_from = now - timedelta(days=period_days)
 
-    # ── Filters ────────────────────────────────────────────────────────────────
     region_id  = request.GET.get('region_id', '').strip()
     field_id   = request.GET.get('field_id',  '').strip()
     site_id    = request.GET.get('site_id',   '').strip()
     device_ids_param = [d for d in request.GET.getlist('device_id') if d.strip()]
 
-    # Build human-readable filter label for PDF header
     filter_label = 'Все устройства'
     try:
         if device_ids_param:
@@ -165,11 +147,9 @@ def generate_pdf(request):
     except Exception:
         filter_label = 'Все устройства'
 
-    # ── Query data ─────────────────────────────────────────────────────────────
     from apps.users.access import filter_devices_by_user
     all_devices = filter_devices_by_user(Device.objects.filter(is_active=True), request.user)
 
-    # Apply additional geographic / device filters on top of access control
     if device_ids_param:
         all_devices = all_devices.filter(id__in=device_ids_param)
     elif site_id:
@@ -186,7 +166,6 @@ def generate_pdf(request):
         status__in=[DeviceStatus.SITE_VISIT_REQUIRED, DeviceStatus.NEEDS_INSPECTION]
     ).count()
 
-    # Status breakdown (skip zero-count statuses)
     status_label_map = dict(DeviceStatus.choices)
     status_counts = []
     for val in DeviceStatus.values:
@@ -194,10 +173,8 @@ def generate_pdf(request):
         if cnt:
             status_counts.append((status_label_map[val], cnt))
 
-    # Collect device IDs for incident/packet filtering
     device_ids = list(all_devices.values_list('id', flat=True))
 
-    # Incidents in period
     incidents_qs = Incident.objects.filter(
         created_at__gte=date_from,
         device_id__in=device_ids,
@@ -212,7 +189,6 @@ def generate_pdf(request):
     info_inc     = incidents_qs.filter(severity=IncidentSeverity.INFO).count()
     incidents    = list(incidents_qs.order_by('-created_at')[:50])
 
-    # Anomaly stats
     anomaly_qs = AudioPacket.objects.filter(
         recorded_at__gte=date_from,
         has_anomaly=True,
@@ -225,7 +201,6 @@ def generate_pdf(request):
         cls = row['dominant_class']
         anomaly_by_class[cls] = anomaly_by_class.get(cls, 0) + 1
 
-    # ── Build PDF ──────────────────────────────────────────────────────────────
     _register_fonts()
     fn  = _FONT_REGULAR if _FONTS_OK else 'Helvetica'
     fn_b = _FONT_BOLD   if _FONTS_OK else 'Helvetica-Bold'
@@ -276,12 +251,10 @@ def generate_pdf(request):
 
     elems = []
 
-    # ── Logo ───────────────────────────────────────────────────────────────────
     logo_path = _find_logo()
     if logo_path:
         try:
             img = Image(logo_path)
-            # scale proportionally to max width 48mm or max height 22mm
             iw, ih = img.imageWidth, img.imageHeight
             if iw and ih:
                 scale = min(48 * mm / iw, 22 * mm / ih)
@@ -295,7 +268,6 @@ def generate_pdf(request):
         except Exception:
             pass
 
-    # ── Header ─────────────────────────────────────────────────────────────────
     elems.append(Paragraph('АСУТП Мониторинг', S_H1))
     elems.append(Paragraph('Система мониторинга нефтяных качалок', S_SUB))
     elems.append(Spacer(1, 3 * mm))
@@ -317,7 +289,6 @@ def generate_pdf(request):
     elems.append(Spacer(1, 4 * mm))
     elems.append(HRFlowable(width='100%', thickness=1.5, color=CLR_GREEN, spaceAfter=6 * mm))
 
-    # ── Summary stats ──────────────────────────────────────────────────────────
     elems.append(Paragraph('Сводная статистика', S_H2))
 
     summary_data = [
@@ -337,14 +308,12 @@ def generate_pdf(request):
                              header_color=CLR_GREEN, fn=fn, fn_b=fn_b))
     elems.append(Spacer(1, 4 * mm))
 
-    # ── Device status breakdown ────────────────────────────────────────────────
     if status_counts:
         elems.append(Paragraph('Статус устройств', S_H2))
         status_data = [['Статус', 'Кол-во']] + [[lbl, str(cnt)] for lbl, cnt in status_counts]
         elems.append(_make_table(status_data, [page_w * 0.72, page_w * 0.28], fn=fn, fn_b=fn_b))
         elems.append(Spacer(1, 4 * mm))
 
-    # ── Anomalies by class ─────────────────────────────────────────────────────
     if anomaly_by_class:
         elems.append(Paragraph(f'Аудиоаномалии по типу за {period_label}', S_H2))
         anomaly_data = [['Тип аномалии', 'Кол-во пакетов']]
@@ -353,11 +322,9 @@ def generate_pdf(request):
         elems.append(_make_table(anomaly_data, [page_w * 0.72, page_w * 0.28], fn=fn, fn_b=fn_b))
         elems.append(Spacer(1, 4 * mm))
 
-    # ── Incidents table ────────────────────────────────────────────────────────
     elems.append(Paragraph(f'Инциденты за {period_label}', S_H2))
 
     if incidents:
-        # Abbreviated labels so text fits narrow columns without overflow
         sev_labels = {
             IncidentSeverity.CRITICAL: 'Критично',
             IncidentSeverity.WARNING:  'Пред-ние',
@@ -376,7 +343,6 @@ def generate_pdf(request):
                                 fontSize=7.5, fontName=fn, textColor=CLR_DARK,
                                 leading=10, wordWrap='CJK')
         S_CELL_B = ParagraphStyle('CellB', parent=S_CELL, fontName=fn_b)
-        # Header cells: white text on green background
         S_CELL_HDR = ParagraphStyle('CellHdr', parent=S_CELL_B, textColor=CLR_WHITE)
 
         col_w = [
@@ -395,11 +361,9 @@ def generate_pdf(request):
             Paragraph('Заголовок',   S_CELL_HDR),
         ]]
 
-        # Colour severity cells via Paragraph style (TEXTCOLOR doesn't apply to Paragraph cells)
         S_CELL_CRIT = ParagraphStyle('CellCrit', parent=S_CELL, textColor=CLR_RED, fontName=fn_b)
         S_CELL_WARN = ParagraphStyle('CellWarn', parent=S_CELL, textColor=CLR_YELLOW)
 
-        # Rebuild data rows with coloured severity cell
         inc_data = [inc_data[0]]
         for inc in incidents:
             sev_txt = sev_labels.get(inc.severity, inc.severity)
@@ -419,7 +383,6 @@ def generate_pdf(request):
     else:
         elems.append(Paragraph('Инциденты за выбранный период отсутствуют.', S_NORM))
 
-    # ── Footer ─────────────────────────────────────────────────────────────────
     elems.append(Spacer(1, 8 * mm))
     elems.append(HRFlowable(width='100%', thickness=0.5, color=CLR_BORDER))
     elems.append(Spacer(1, 2 * mm))
@@ -429,7 +392,6 @@ def generate_pdf(request):
         S_FOOTER,
     ))
 
-    # Build with page numbers
     doc.build(elems, onFirstPage=_page_number, onLaterPages=_page_number)
 
     buffer.seek(0)
@@ -439,10 +401,9 @@ def generate_pdf(request):
     return resp
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _find_logo():
-    """Return absolute filesystem path to logo.png, or None."""
+    """Ищет логотип в staticfiles или собранной static-директории."""
     try:
         from django.contrib.staticfiles import finders
         path = finders.find('img/logo.png')
@@ -456,12 +417,11 @@ def _find_logo():
 
 def _make_table(data, col_widths, header_color=None, font_size=9, repeat_header=False,
                 extra_cmds=None, fn='Helvetica', fn_b='Helvetica-Bold'):
-    """Build a styled ReportLab Table with Cyrillic-capable fonts."""
+    """Собирает таблицу ReportLab с единым оформлением и поддержкой кириллицы."""
     if header_color is None:
         header_color = CLR_DARK
 
     cmds = [
-        # Header
         ('BACKGROUND',    (0, 0), (-1, 0), header_color),
         ('TEXTCOLOR',     (0, 0), (-1, 0), CLR_WHITE),
         ('FONTNAME',      (0, 0), (-1, 0), fn_b),
@@ -470,7 +430,6 @@ def _make_table(data, col_widths, header_color=None, font_size=9, repeat_header=
         ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
         ('LEFTPADDING',   (0, 0), (-1, 0), 8),
         ('RIGHTPADDING',  (0, 0), (-1, 0), 8),
-        # Data rows
         ('FONTNAME',      (0, 1), (-1, -1), fn),
         ('FONTSIZE',      (0, 1), (-1, -1), font_size),
         ('ROWBACKGROUNDS',(0, 1), (-1, -1), [CLR_WHITE, CLR_ROW_ALT]),
@@ -479,9 +438,7 @@ def _make_table(data, col_widths, header_color=None, font_size=9, repeat_header=
         ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
         ('LEFTPADDING',   (0, 1), (-1, -1), 8),
         ('RIGHTPADDING',  (0, 1), (-1, -1), 8),
-        # Last column centred
         ('ALIGN',         (-1, 0), (-1, -1), 'CENTER'),
-        # Grid
         ('GRID',          (0, 0), (-1, -1), 0.4, CLR_BORDER),
     ]
     if extra_cmds:

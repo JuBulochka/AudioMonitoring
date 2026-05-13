@@ -38,9 +38,6 @@ try:
 except ImportError:
     sys.exit("requests not installed: pip install requests")
 
-# ---------------------------------------------------------------------------
-# Config  (all from .env / environment)
-# ---------------------------------------------------------------------------
 SERVER_URL        = os.environ.get("SERVER_URL", "http://localhost:8000").rstrip("/")
 DEVICE_AUTH_KEY   = os.environ.get("DEVICE_AUTH_KEY", "")
 FIRMWARE_VERSION  = os.environ.get("FIRMWARE_VERSION", "1.3.2")
@@ -57,16 +54,13 @@ SAMPLE_RATE  = 44100
 CHANNELS     = 1
 AUDIO_FORMAT = "wav"
 
-# If set to "true", audio file is NOT uploaded — only analysis JSON is sent
 DISABLE_AUDIO_UPLOAD = os.environ.get("DISABLE_AUDIO_UPLOAD", "false").lower() == "true"
 
-# SSH tunnel
 TUNNEL_REMOTE_HOST = os.environ.get("TUNNEL_REMOTE_HOST", "")
 TUNNEL_REMOTE_PORT = int(os.environ.get("TUNNEL_REMOTE_PORT", "2222"))
 TUNNEL_KEY_PATH    = os.environ.get("TUNNEL_KEY_PATH", "/opt/pumpjack/.ssh/tunnel_key")
 LOCAL_SSH_PORT     = 22
 
-# Trigger file: operator sends "record_now" command → edge_client picks it up
 RECORD_TRIGGER_FILE = "/tmp/pumpjack_record_now"
 
 logging.basicConfig(
@@ -76,13 +70,8 @@ logging.basicConfig(
 )
 log = logging.getLogger("edge_client")
 
-# ---------------------------------------------------------------------------
-# Command catalog (MUST mirror server-side COMMAND_CATALOG in models.py)
-# Server sends only the command_key; Pi runs the script defined here.
-# ---------------------------------------------------------------------------
 _CMD_CATALOG: dict = {
 
-    # 1 — Логи и статус сервиса
     "view_logs": {
         "script": r"""
 echo '=== СТАТУС СЕРВИСА ==='
@@ -112,7 +101,6 @@ ss -tnp 2>/dev/null | grep -E 'ssh|autossh|2222' || echo 'Активных SSH-�
         "timeout": 15,
     },
 
-    # 2 — Отключить отправку аудио
     "disable_audio": {
         "script": r"""
 BASE_DIR="$HOME/pumpjack-edge"
@@ -140,7 +128,6 @@ fi
         "timeout": 15,
     },
 
-    # 3 — Ручной старт записи прямо сейчас
     "record_now": {
         "script": r"""
 TRIGGER=/tmp/pumpjack_record_now
@@ -165,7 +152,6 @@ exit 1
         "timeout": 40,
     },
 
-    # 4 — Диагностика звука (USB-камера)
     "audio_diagnostics": {
         "script": r"""
 echo '=== USB УСТРОЙСТВА ==='
@@ -212,9 +198,6 @@ fi
 }
 
 
-# ---------------------------------------------------------------------------
-# Device diagnostics
-# ---------------------------------------------------------------------------
 
 def get_system_diagnostics() -> dict:
     """Collect CPU temp, usage, memory, disk, uptime."""
@@ -248,9 +231,6 @@ def get_system_diagnostics() -> dict:
     return diag
 
 
-# ---------------------------------------------------------------------------
-# Audio recording
-# ---------------------------------------------------------------------------
 
 def record_audio(duration_sec: int, output_path: str) -> bool:
     try:
@@ -271,9 +251,6 @@ def record_audio(duration_sec: int, output_path: str) -> bool:
         return False
 
 
-# ---------------------------------------------------------------------------
-# ML model inference (stub — replace with actual model)
-# ---------------------------------------------------------------------------
 
 def run_inference(audio_path: str) -> dict:
     """
@@ -299,9 +276,6 @@ def _fallback_analysis() -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# API communication
-# ---------------------------------------------------------------------------
 
 def _headers() -> dict:
     return {"X-Device-Key": DEVICE_AUTH_KEY, "Accept": "application/json"}
@@ -351,7 +325,6 @@ def send_packet(recorded_at, analysis, diag, audio_path=None, urgent=False) -> d
     }
 
     try:
-        # Upload audio file only if not disabled
         if audio_path and Path(audio_path).exists() and not DISABLE_AUDIO_UPLOAD:
             with open(audio_path, "rb") as f:
                 resp = requests.post(
@@ -399,9 +372,6 @@ def report_version() -> bool:
         return False
 
 
-# ---------------------------------------------------------------------------
-# SSH reverse tunnel
-# ---------------------------------------------------------------------------
 
 def _open_tunnel(remote_port: int, local_port: int, label: str) -> subprocess.Popen | None:
     """Open a single autossh reverse tunnel: remote_port → localhost:local_port."""
@@ -446,11 +416,7 @@ def _open_tunnel(remote_port: int, local_port: int, label: str) -> subprocess.Po
 
 
 def open_tunnels(ssh_port: int | None) -> subprocess.Popen | None:
-    """
-    Open SSH reverse tunnel to the server.
-    Always-on: called regardless of whether an operator session exists.
-    Returns ssh_proc.
-    """
+    """Поднимает постоянный SSH reverse-туннель до серверного sshd."""
     return _open_tunnel(ssh_port, LOCAL_SSH_PORT, "SSH") if ssh_port else None
 
 
@@ -464,9 +430,6 @@ def close_tunnel(proc: subprocess.Popen | None):
         log.info("Tunnel closed (pid=%d)", proc.pid)
 
 
-# ---------------------------------------------------------------------------
-# Command dispatch
-# ---------------------------------------------------------------------------
 
 def poll_commands() -> list:
     try:
@@ -484,11 +447,6 @@ def poll_commands() -> list:
 def execute_command(cmd: dict) -> tuple[str, int]:
     key     = cmd.get("command_key", "")
 
-    # ── Special case: record_now ───────────────────────────────────────────
-    # The shell-script approach (create trigger file, wait for it to vanish)
-    # dead-locks: execute_command() blocks the main loop, so the trigger
-    # is never processed.  Instead, set the flag from Python and return
-    # immediately — the main loop will pick it up within ≤5 seconds.
     if key == "record_now":
         try:
             Path(RECORD_TRIGGER_FILE).touch()
@@ -514,10 +472,6 @@ def execute_command(cmd: dict) -> tuple[str, int]:
     log.info("Executing command: %s (timeout=%ds)", key, timeout)
 
     try:
-        # Use setsid so the shell and ALL its children share a process group.
-        # This lets us kill the whole group on timeout — avoiding the classic
-        # "subprocess.run(shell=True, timeout=…) hangs forever" bug where
-        # bash is killed but orphaned children (pip3, etc.) keep the pipe open.
         proc = subprocess.Popen(
             script,
             shell=True,
@@ -582,9 +536,6 @@ def process_pending_commands():
                 time.sleep(5)
 
 
-# ---------------------------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------------------------
 
 def main():
     if not DEVICE_AUTH_KEY:
@@ -605,28 +556,23 @@ def main():
 
     ssh_tunnel: subprocess.Popen | None = None
 
-    # Tunnel port from server (received in heartbeat response)
     assigned_ssh_port: int | None = None
 
     while True:
         now = time.time()
 
-        # ── Heartbeat ──────────────────────────────────────────────────────
         if now - last_heartbeat_time >= HEARTBEAT_INTERVAL_SEC:
             diag = get_system_diagnostics()
             hb_data = send_heartbeat(diag)
             if hb_data:
-                # Server tells us our assigned tunnel ports
                 new_ssh = hb_data.get("tunnel_port")
                 if new_ssh and new_ssh != assigned_ssh_port:
                     log.info("SSH tunnel port (re)assigned: %s", new_ssh)
-                    # Port changed — close old tunnel so it reopens with new port
                     close_tunnel(ssh_tunnel)
                     ssh_tunnel = None
                     assigned_ssh_port = new_ssh
             last_heartbeat_time = now
 
-        # ── Audio packet (every 3 hours OR trigger file) ───────────────────
         trigger_file_exists = Path(RECORD_TRIGGER_FILE).exists()
         if trigger_file_exists or (now - last_packet_time >= PACKET_INTERVAL_SEC):
             if trigger_file_exists:
@@ -672,16 +618,11 @@ def main():
                 if audio_path and Path(audio_path).exists():
                     Path(audio_path).unlink(missing_ok=True)
 
-        # ── Always-on reverse SSH tunnel ──────────────────────────────────
-        # Checked every 60 s; reopened automatically if it dies.
-        # Tunnel port is learned from the heartbeat response.
         if now - last_tunnel_check_time >= REMOTE_POLL_INTERVAL_SEC:
-            # Check SSH tunnel health
             if ssh_tunnel and ssh_tunnel.poll() is not None:
                 log.info("SSH tunnel exited (rc=%d), will reopen", ssh_tunnel.returncode)
                 ssh_tunnel = None
 
-            # (Re)open if we have a port and tunnel is not running
             if assigned_ssh_port and not ssh_tunnel:
                 ssh_tunnel = open_tunnels(assigned_ssh_port)
                 log.info("SSH tunnel %s (pid=%s)",
@@ -692,7 +633,6 @@ def main():
 
             last_tunnel_check_time = now
 
-        # ── Command dispatch ────────────────────────────────────────────────
         if now - last_command_poll_time >= COMMAND_POLL_INTERVAL_SEC:
             process_pending_commands()
             last_command_poll_time = now

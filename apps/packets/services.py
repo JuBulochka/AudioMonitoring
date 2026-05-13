@@ -1,6 +1,4 @@
-"""
-Packet domain services — ingest, validate, classify, trigger incidents.
-"""
+"""Обработка аудиопакетов: расчет важности, сохранение и запуск инцидентов."""
 import logging
 from datetime import timedelta
 
@@ -12,7 +10,6 @@ from .models import AudioPacket, AudioClassScore, SeverityLevel, AudioClass
 
 logger = logging.getLogger("apps.packets")
 
-# Thresholds for anomaly → severity mapping
 CRITICAL_CLASSES = {AudioClass.GRINDING, AudioClass.KNOCK, AudioClass.WHISTLE}
 WARNING_CLASSES = {AudioClass.SQUEAK, AudioClass.FOREIGN_SOUNDS, AudioClass.OTHER_ANOMALY}
 
@@ -22,12 +19,10 @@ WARNING_SCORE_THRESHOLD = 0.45
 
 def compute_severity(class_scores: dict[str, float]) -> tuple[str, str, float]:
     """
-    Given a dict {class_name: score}, determine:
-    - severity level (info/warning/critical)
-    - dominant class
-    - dominant score
+    Определяет уровень важности по оценкам аудиоклассов.
 
-    Returns (severity, dominant_class, dominant_score)
+    Критичные классы имеют приоритет над обычной доминирующей оценкой: например,
+    сильный стук или скрежет сразу поднимает пакет до critical.
     """
     if not class_scores:
         return SeverityLevel.INFO, AudioClass.NORMAL, 0.0
@@ -35,24 +30,20 @@ def compute_severity(class_scores: dict[str, float]) -> tuple[str, str, float]:
     dominant_class = max(class_scores, key=class_scores.get)
     dominant_score = class_scores[dominant_class]
 
-    # Critical: any critical-class exceeds threshold
     for cls in CRITICAL_CLASSES:
         if class_scores.get(cls, 0) >= CRITICAL_SCORE_THRESHOLD:
             return SeverityLevel.CRITICAL, cls, class_scores[cls]
 
-    # Warning: any warning-class or high normal deviation
     for cls in WARNING_CLASSES:
         if class_scores.get(cls, 0) >= WARNING_SCORE_THRESHOLD:
             return SeverityLevel.WARNING, cls, class_scores[cls]
 
-    # Speech/noise with high confidence = warning
     if class_scores.get(AudioClass.SPEECH, 0) >= WARNING_SCORE_THRESHOLD:
         return SeverityLevel.WARNING, AudioClass.SPEECH, class_scores[AudioClass.SPEECH]
 
     if class_scores.get(AudioClass.NOISE, 0) >= WARNING_SCORE_THRESHOLD:
         return SeverityLevel.WARNING, AudioClass.NOISE, class_scores[AudioClass.NOISE]
 
-    # Normal
     if dominant_class == AudioClass.NORMAL:
         return SeverityLevel.INFO, AudioClass.NORMAL, dominant_score
 
@@ -62,33 +53,10 @@ def compute_severity(class_scores: dict[str, float]) -> tuple[str, str, float]:
 @transaction.atomic
 def ingest_packet(device, data: dict, audio_file=None) -> AudioPacket:
     """
-    Create AudioPacket and AudioClassScore rows from device submission.
+    Сохраняет пакет, оценки классов и обновляет состояние устройства.
 
-    data dict structure (mirrors device JSON payload):
-    {
-        "recorded_at": "2024-01-15T10:00:00Z",
-        "duration_seconds": 30.0,
-        "analysis": {
-            "normal": 0.05,
-            "noise": 0.10,
-            "grinding": 0.75,
-            ...
-        },
-        "device_state": {
-            "cpu_temp": 52.3,
-            "cpu_usage": 18.5,
-            "memory_usage_pct": 45.2,
-            "disk_usage_pct": 23.1,
-            "firmware_version": "1.2.3",
-            "model_version": "0.9.1"
-        },
-        "audio_meta": {
-            "sample_rate": 44100,
-            "channels": 1,
-            "format": "wav",
-            "file_size_bytes": 1234567
-        }
-    }
+    Если пришел аудиофайл, запускается серверный ML-анализ. Если файла нет, но
+    устройство уже передало аномалию в JSON, сразу запускается обработка инцидента.
     """
     from django.utils.dateparse import parse_datetime
 
@@ -126,7 +94,6 @@ def ingest_packet(device, data: dict, audio_file=None) -> AudioPacket:
         raw_analysis=data,
     )
 
-    # Bulk-create class scores
     score_objects = [
         AudioClassScore(
             packet=packet,
@@ -143,7 +110,6 @@ def ingest_packet(device, data: dict, audio_file=None) -> AudioPacket:
     ]
     AudioClassScore.objects.bulk_create(score_objects, ignore_conflicts=True)
 
-    # Update device.last_packet_at
     device.last_packet_at = packet.recorded_at
     device.is_online = True
     device.last_seen_at = timezone.now()
@@ -154,13 +120,10 @@ def ingest_packet(device, data: dict, audio_file=None) -> AudioPacket:
         device.serial_number, severity, dominant_class, dominant_score,
     )
 
-    # Trigger ML analysis (overwrites device analysis with server-side ML)
-    # ML task will also trigger incident creation if anomaly detected
     if packet.audio_file:
         from apps.packets.tasks import analyze_audio_packet
         analyze_audio_packet.delay(str(packet.id))
     elif has_anomaly:
-        # No audio file — use device analysis for incidents directly
         from apps.incidents.tasks import process_anomalous_packet
         process_anomalous_packet.delay(str(packet.id))
 
@@ -168,7 +131,7 @@ def ingest_packet(device, data: dict, audio_file=None) -> AudioPacket:
 
 
 def get_packet_history(device_id, days=90, page=1, page_size=50, severity=None, has_anomaly=None):
-    """Paginated packet history for a device."""
+    """Возвращает постраничную историю пакетов устройства."""
     from_date = timezone.now() - timedelta(days=days)
     qs = AudioPacket.objects.filter(
         device_id=device_id,
@@ -187,11 +150,10 @@ def get_packet_history(device_id, days=90, page=1, page_size=50, severity=None, 
 
 
 def purge_old_packets():
-    """Delete packets and audio files older than AUDIO_RETENTION_DAYS."""
+    """Удаляет пакеты старше настроенного срока хранения."""
     cutoff = timezone.now() - timedelta(days=settings.AUDIO_RETENTION_DAYS)
     old_packets = AudioPacket.objects.filter(recorded_at__lt=cutoff)
     count = old_packets.count()
-    # django-cleanup handles file deletion on model delete
     old_packets.delete()
     logger.info("Purged %d old audio packets (cutoff: %s)", count, cutoff.date())
     return count

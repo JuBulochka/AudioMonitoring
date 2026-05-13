@@ -25,9 +25,7 @@
     <div class="d-flex gap-3 px-3 py-3 border-bottom notification-row {% if not notif.is_read %}unread{% endif %}"
          id="notif-{{ notif.id }}"
          style="border-color:var(--border-clr)!important; {% if not notif.is_read %}background:rgba(88,166,255,.04);{% endif %}">
-
-      <!-- Icon -->
-      <div style="width:36px; height:36px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+<div style="width:36px; height:36px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
            background:{% if notif.alert.severity == 'critical' %}rgba(248,81,73,.15){% elif notif.alert.severity == 'warning' %}rgba(255,193,7,.12){% else %}rgba(88,166,255,.12){% endif %}">
         {% if notif.alert.severity == 'critical' %}
           <i class="bi bi-exclamation-circle-fill" style="color:#f85149; font-size:1rem"></i>
@@ -37,9 +35,7 @@
           <i class="bi bi-info-circle-fill" style="color:#58a6ff; font-size:1rem"></i>
         {% endif %}
       </div>
-
-      <!-- Content -->
-      <div style="flex:1; min-width:0">
+<div style="flex:1; min-width:0">
         <div class="d-flex justify-content-between align-items-start gap-2">
           <div style="font-size:.88rem; color:{% if not notif.is_read %}var(--txt-primary){% else %}var(--txt-muted){% endif %}; font-weight:{% if not notif.is_read %}600{% else %}400{% endif %}">
             {{ notif.alert.title }}
@@ -63,9 +59,7 @@
           <span style="font-size:.72rem; color:var(--txt-dim)">{{ notif.alert.get_alert_type_display }}</span>
         </div>
       </div>
-
-      <!-- Actions -->
-      <div class="d-flex flex-column gap-1 align-items-end">
+<div class="d-flex flex-column gap-1 align-items-end">
         {% if not notif.is_read %}
         <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.7rem"
                 onclick="markRead('{{ notif.id }}')">

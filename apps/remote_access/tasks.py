@@ -1,4 +1,4 @@
-"""Remote access Celery tasks."""
+"""Фоновые задачи удаленного доступа."""
 import logging
 
 from celery import shared_task
@@ -9,7 +9,7 @@ logger = logging.getLogger("apps.remote_access")
 
 @shared_task(name="apps.remote_access.tasks.expire_stale_sessions")
 def expire_stale_sessions():
-    """Every 10 minutes: expire sessions whose token TTL has passed."""
+    """Закрывает устаревшие сессии, если срок токена уже истек."""
     from apps.remote_access.models import RemoteAccessSession, RemoteAccessStatus
 
     stale = RemoteAccessSession.objects.filter(

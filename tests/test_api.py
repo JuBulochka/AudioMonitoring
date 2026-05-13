@@ -10,9 +10,6 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
 
 @pytest.fixture
 def api_client():
@@ -110,9 +107,6 @@ def assigned_client(api_client, assigned_operator):
     return api_client
 
 
-# ---------------------------------------------------------------------------
-# Device auth
-# ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
 class TestDeviceAuth:
@@ -150,9 +144,6 @@ class TestDeviceAuth:
         assert device.is_online is True
 
 
-# ---------------------------------------------------------------------------
-# Packet submission
-# ---------------------------------------------------------------------------
 
 VALID_ANALYSIS = {
     "normal": 0.05,
@@ -230,9 +221,6 @@ class TestPacketIngestion:
         assert resp.json()["has_anomaly"] is False
 
 
-# ---------------------------------------------------------------------------
-# Incident creation
-# ---------------------------------------------------------------------------
 
 class TestIncidentCreation:
     def test_critical_packet_creates_incident(self, api_client, device):
@@ -248,13 +236,9 @@ class TestIncidentCreation:
             HTTP_X_DEVICE_KEY=device.auth_key,
         )
 
-        # Celery task runs synchronously in tests (CELERY_TASK_ALWAYS_EAGER=True)
         assert Incident.objects.filter(device=device).exists()
 
 
-# ---------------------------------------------------------------------------
-# Operator API — device status
-# ---------------------------------------------------------------------------
 
 class TestDeviceStatusAPI:
     def test_change_status_as_admin(self, admin_client, device):
@@ -283,13 +267,9 @@ class TestDeviceStatusAPI:
             data={"status": "resolved"},
             format="json",
         )
-        # Operator role has CanManageDevices = False for write
         assert resp.status_code in (403, 401)
 
 
-# ---------------------------------------------------------------------------
-# Notifications
-# ---------------------------------------------------------------------------
 
 class TestNotifications:
     def test_unread_count(self, auth_client, operator_user):
@@ -312,9 +292,6 @@ class TestNotifications:
         assert resp.json()["success"] is True
 
 
-# ---------------------------------------------------------------------------
-# Health endpoint
-# ---------------------------------------------------------------------------
 
 class TestHealth:
     def test_liveness(self, api_client):
@@ -328,9 +305,6 @@ class TestHealth:
         assert "checks" in resp.json()
 
 
-# ---------------------------------------------------------------------------
-# Map API
-# ---------------------------------------------------------------------------
 
 class TestMapAPI:
     def test_map_devices(self, auth_client):
@@ -345,9 +319,6 @@ class TestMapAPI:
         assert resp.status_code == 200
 
 
-# ---------------------------------------------------------------------------
-# Operator field scoping
-# ---------------------------------------------------------------------------
 
 class TestOperatorFieldScoping:
     def test_device_api_list_only_assigned_fields(self, assigned_client, device, other_device):

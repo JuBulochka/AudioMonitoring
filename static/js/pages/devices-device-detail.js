@@ -1,4 +1,3 @@
-// ---- Status change ----
 function changeStatus() {
   const status = document.getElementById('newStatusSelect').value;
   const reason = document.getElementById('statusReason').value;
@@ -12,7 +11,6 @@ function changeStatus() {
   });
 }
 
-// ---- Add comment ----
 function addComment() {
   const text = document.getElementById('commentText').value.trim();
   if (!text) return;
@@ -24,7 +22,6 @@ function addComment() {
 }
 
 
-// ---- Packet detail offcanvas ----
 function showPacketDetail(id, dt, cls, score, sev) {
   const body = document.getElementById('packetOffcanvasBody');
   body.innerHTML = `<p class="text-muted mb-1" style="font-size:.75rem">Загрузка...</p>`;
@@ -99,7 +96,6 @@ function reviewPacket(id) {
   }).then(() => location.reload());
 }
 
-// ---- Radar chart for audio classes ----
 
 const classLabels = {'normal':'Норма','noise':'Шум','grinding':'Скрежет','squeak':'Скрип',
   'knock':'Стук','whistle':'Свист','foreign_sounds':'Посторонние','speech':'Речь','other_anomaly':'Иное'};

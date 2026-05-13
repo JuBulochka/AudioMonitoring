@@ -1,24 +1,13 @@
-"""
-Access control helpers for role-based view filtering.
-
-Usage in views:
-    from apps.users.access import admin_required, filter_devices_by_user
-
-    @admin_required
-    def device_create(request): ...
-
-    qs = filter_devices_by_user(Device.objects.all(), request.user)
-"""
+"""Общие правила доступа для админов и операторов."""
 from functools import wraps
 
 from django.contrib import messages
 from django.shortcuts import redirect
 
 
-# ── Decorators ─────────────────────────────────────────────────────────────────
 
 def admin_required(view_func):
-    """Redirect non-admins to dashboard with an error message."""
+    """Ограничивает страницу только администраторами."""
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -30,23 +19,19 @@ def admin_required(view_func):
     return wrapper
 
 
-# ── Queryset filters ───────────────────────────────────────────────────────────
 
 def filter_devices_by_user(qs, user):
-    """
-    Filter a Device queryset to only devices in user's allowed fields.
-    Admin sees all. Operator without assignments sees nothing.
-    """
+    """Возвращает устройства только из месторождений, доступных пользователю."""
     field_ids = user.get_allowed_field_ids()
     if field_ids is None:
-        return qs   # admin — all devices
+        return qs
     if not field_ids:
         return qs.none()
     return qs.filter(pump_jack__site__field_id__in=field_ids)
 
 
 def filter_regions_by_user(qs, user):
-    """Filter Region queryset to regions that contain user's assigned fields."""
+    """Оставляет регионы, в которых есть закрепленные за оператором месторождения."""
     field_ids = user.get_allowed_field_ids()
     if field_ids is None:
         return qs
@@ -56,7 +41,7 @@ def filter_regions_by_user(qs, user):
 
 
 def user_can_access_device(user, device) -> bool:
-    """Return whether user may access a concrete Device instance."""
+    """Проверяет доступ к конкретному устройству без отдельного запроса списка."""
     field_ids = user.get_allowed_field_ids()
     if field_ids is None:
         return True
@@ -66,7 +51,7 @@ def user_can_access_device(user, device) -> bool:
 
 
 def filter_incidents_by_user(qs, user):
-    """Filter Incident queryset by user's allowed fields."""
+    """Фильтрует инциденты по тем же месторождениям, что и устройства."""
     field_ids = user.get_allowed_field_ids()
     if field_ids is None:
         return qs
@@ -76,7 +61,7 @@ def filter_incidents_by_user(qs, user):
 
 
 def filter_packets_by_user(qs, user):
-    """Filter AudioPacket queryset by user's allowed fields."""
+    """Ограничивает историю аудиопакетов доступными месторождениями."""
     field_ids = user.get_allowed_field_ids()
     if field_ids is None:
         return qs

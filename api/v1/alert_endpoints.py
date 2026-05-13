@@ -1,4 +1,4 @@
-"""Alert / Notification REST API — flat response matching frontend Notification type."""
+"""REST API уведомлений для списка, счетчика и отметки прочитанного."""
 from django.utils import timezone
 from rest_framework import generics, serializers
 from rest_framework.permissions import IsAuthenticated
@@ -9,10 +9,9 @@ from apps.alerts.models import Alert, Notification
 from apps.common.pagination import StandardResultsSetPagination
 
 
-# ── Flat notification serializer ───────────────────────────────────────────────
 
 class FlatNotificationSerializer(serializers.ModelSerializer):
-    """Flattens the Alert→Notification relation so frontend sees a single object."""
+    """Превращает связку Alert и Notification в один объект для фронтенда."""
     title = serializers.CharField(source="alert.title", read_only=True)
     message = serializers.CharField(source="alert.message", read_only=True)
     severity = serializers.CharField(source="alert.severity", read_only=True)
@@ -32,7 +31,6 @@ class FlatNotificationSerializer(serializers.ModelSerializer):
         ]
 
     def get_severity_display(self, obj):
-        # Use Alert's get_severity_display
         return obj.alert.get_severity_display()
 
     def get_device(self, obj):
@@ -48,16 +46,9 @@ class FlatNotificationSerializer(serializers.ModelSerializer):
         return {"id": str(i.id), "title": i.title}
 
 
-# ── Views ──────────────────────────────────────────────────────────────────────
 
 class NotificationListView(generics.ListAPIView):
-    """
-    GET /api/v1/alerts/notifications/
-
-    Filters:
-      ?is_read=false  — only unread  (frontend sends this)
-      ?unread_only=true — alias
-    """
+    """Возвращает уведомления пользователя с фильтром прочитано/непрочитано."""
     serializer_class = FlatNotificationSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -69,7 +60,6 @@ class NotificationListView(generics.ListAPIView):
         ).select_related("alert__device", "alert__incident").order_by("-created_at")
 
         params = self.request.query_params
-        # Support both ?is_read=false and ?unread_only=true
         is_read_param = params.get("is_read", "").lower()
         unread_only_param = params.get("unread_only", "").lower()
         if is_read_param == "false" or unread_only_param == "true":
@@ -110,17 +100,14 @@ class UnreadCountView(APIView):
         count = Notification.objects.filter(
             user=request.user, is_read=False, is_dismissed=False
         ).count()
-        # Return both keys for compatibility
         return Response({"count": count, "unread_count": count})
 
 
-# ── URL patterns ───────────────────────────────────────────────────────────────
 from django.urls import path  # noqa: E402
 
 urlpatterns = [
     path("notifications/", NotificationListView.as_view(), name="api-notification-list"),
     path("notifications/unread-count/", UnreadCountView.as_view(), name="api-unread-count"),
-    # Frontend calls /read-all/, keep /mark-all-read/ as alias
     path("notifications/read-all/", MarkAllReadView.as_view(), name="api-notifications-read-all"),
     path("notifications/mark-all-read/", MarkAllReadView.as_view(), name="api-notifications-mark-all-read"),
     path("notifications/<uuid:id>/read/", MarkNotificationReadView.as_view(), name="api-notification-read"),

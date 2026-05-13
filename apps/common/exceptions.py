@@ -21,7 +21,6 @@ def custom_exception_handler(exc, context):
         }
         return response
 
-    # Unhandled exception
     logger.exception("Unhandled exception in view: %s", exc)
     return Response(
         {"success": False, "error": {"status_code": 500, "detail": "Internal server error"}},

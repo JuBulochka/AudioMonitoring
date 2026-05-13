@@ -31,9 +31,6 @@ def audio_upload_path(instance, filename):
     return f"audio/{instance.device_id}/{date_str}/{uuid.uuid4().hex}{ext}"
 
 
-# ---------------------------------------------------------------------------
-# Audio anomaly / class labels
-# ---------------------------------------------------------------------------
 
 class AudioClass(models.TextChoices):
     NORMAL = "normal", _("Норма")
@@ -60,9 +57,6 @@ class SeverityLevel(models.TextChoices):
     CRITICAL = "critical", _("Критично")
 
 
-# ---------------------------------------------------------------------------
-# Audio Packet
-# ---------------------------------------------------------------------------
 
 class AudioPacket(models.Model):
     """
@@ -75,11 +69,9 @@ class AudioPacket(models.Model):
         on_delete=models.CASCADE,
         related_name="audio_packets",
     )
-    # Timing
     recorded_at = models.DateTimeField(db_index=True)  # When recording started on device
     received_at = models.DateTimeField(auto_now_add=True, db_index=True)
     duration_seconds = models.FloatField(null=True, blank=True)
-    # Audio file
     audio_file = models.FileField(
         upload_to=audio_upload_path,
         null=True, blank=True,
@@ -89,7 +81,6 @@ class AudioPacket(models.Model):
     audio_sample_rate = models.IntegerField(null=True, blank=True)
     audio_channels = models.SmallIntegerField(null=True, blank=True)
     audio_format = models.CharField(max_length=20, blank=True)
-    # Analysis results (summary fields for fast filtering)
     has_anomaly = models.BooleanField(default=False, db_index=True)
     severity = models.CharField(
         max_length=10,
@@ -107,22 +98,18 @@ class AudioPacket(models.Model):
         null=True, blank=True,
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
     )
-    # Processing status
     status = models.CharField(
         max_length=15,
         choices=PacketStatus.choices,
         default=PacketStatus.RECEIVED,
     )
-    # Device state snapshot at time of recording
     device_cpu_temp = models.FloatField(null=True, blank=True)
     device_cpu_usage = models.FloatField(null=True, blank=True)
     device_memory_usage_pct = models.FloatField(null=True, blank=True)
     device_disk_usage_pct = models.FloatField(null=True, blank=True)
     device_firmware_version = models.CharField(max_length=50, blank=True)
     device_model_version = models.CharField(max_length=50, blank=True)
-    # Raw JSON from device (preserved for debugging and future reprocessing)
     raw_analysis = models.JSONField(default=dict)
-    # Operator fields
     operator_status = models.CharField(
         max_length=30,
         choices=[
@@ -166,9 +153,6 @@ class AudioPacket(models.Model):
         return None
 
 
-# ---------------------------------------------------------------------------
-# Per-class scores
-# ---------------------------------------------------------------------------
 
 class AudioClassScore(models.Model):
     """One row per audio class per packet. Enables flexible per-class queries."""
@@ -181,7 +165,6 @@ class AudioClassScore(models.Model):
     score = models.FloatField(
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)]
     )
-    # threshold_exceeded = model flagged this class as anomalous
     threshold_exceeded = models.BooleanField(default=False)
 
     class Meta:
@@ -197,9 +180,6 @@ class AudioClassScore(models.Model):
         return f"{self.audio_class}: {self.score:.3f}"
 
 
-# ---------------------------------------------------------------------------
-# Daily aggregated metrics (materialized rollup)
-# ---------------------------------------------------------------------------
 
 class DailyDeviceMetrics(models.Model):
     """
@@ -213,19 +193,15 @@ class DailyDeviceMetrics(models.Model):
         related_name="daily_metrics",
     )
     date = models.DateField(db_index=True)
-    # Packet counts
     total_packets = models.IntegerField(default=0)
     anomaly_packets = models.IntegerField(default=0)
     critical_packets = models.IntegerField(default=0)
     warning_packets = models.IntegerField(default=0)
-    # Per-class anomaly counts
     class_counts = models.JSONField(default=dict)
-    # Device health averages
     avg_cpu_temp = models.FloatField(null=True, blank=True)
     avg_cpu_usage = models.FloatField(null=True, blank=True)
     avg_memory_usage_pct = models.FloatField(null=True, blank=True)
     avg_disk_usage_pct = models.FloatField(null=True, blank=True)
-    # Uptime / connectivity
     online_minutes = models.IntegerField(default=0)
     heartbeat_count = models.IntegerField(default=0)
 

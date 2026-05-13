@@ -1,17 +1,4 @@
-"""
-Command dispatch API.
-
-Pi-facing  (authenticated by X-Device-Key):
-  GET  /api/v1/device/commands/        — Pi polls for pending commands
-  POST /api/v1/device/commands/<id>/result/  — Pi reports execution result
-
-Operator-facing (authenticated by session / JWT):
-  GET  /api/v1/commands/catalog/               — list available command types
-  GET  /api/v1/commands/?device=<uuid>         — command history for a device
-  POST /api/v1/commands/                       — send a command to a device
-  POST /api/v1/commands/<id>/cancel/           — cancel a pending command
-  GET  /api/v1/commands/<id>/                  — single command detail + output
-"""
+"""API команд: Raspberry Pi забирает задания, оператор создает и смотрит их."""
 import logging
 
 from django.utils import timezone
@@ -28,9 +15,6 @@ from apps.users.access import filter_devices_by_user
 logger = logging.getLogger("apps.remote_access")
 
 
-# ============================================================================
-# Pi-facing endpoints
-# ============================================================================
 
 @api_view(["GET"])
 @authentication_classes([])
@@ -38,18 +22,10 @@ logger = logging.getLogger("apps.remote_access")
 @throttle_classes([DeviceRateThrottle])
 def device_poll_commands(request):
     """
-    GET /api/v1/device/commands/
+    Возвращает ожидающие команды для устройства.
 
-    Pi calls this every N seconds. Returns all pending commands for the device.
-    The Pi should process them in order (oldest first) and report results.
-
-    Response:
-    {
-        "commands": [
-            {"id": "uuid", "command_key": "system_info", "params": {}, "created_at": "..."},
-            ...
-        ]
-    }
+    После выдачи команды сразу помечаются как running, чтобы Raspberry Pi
+    не получил одну и ту же команду повторно при следующем опросе.
     """
     if not request.device:
         return Response({"error": "Unauthorized"}, status=401)
@@ -70,7 +46,6 @@ def device_poll_commands(request):
         for cmd in pending
     ]
 
-    # Mark all returned commands as "running" immediately
     if commands_data:
         ids = [c["id"] for c in commands_data]
         DeviceCommand.objects.filter(id__in=ids, status=CommandStatus.PENDING).update(
@@ -86,18 +61,7 @@ def device_poll_commands(request):
 @permission_classes([IsDeviceAuthenticated])
 @throttle_classes([DeviceRateThrottle])
 def device_report_result(request, command_id):
-    """
-    POST /api/v1/device/commands/<id>/result/
-
-    Pi reports the result of a command execution.
-
-    Body:
-    {
-        "output":    "...stdout/stderr...",
-        "exit_code": 0,
-        "error":     ""   // optional, filled if exception occurred
-    }
-    """
+    """Принимает от Raspberry Pi результат выполнения команды."""
     if not request.device:
         return Response({"error": "Unauthorized"}, status=401)
 
@@ -134,11 +98,9 @@ def device_report_result(request, command_id):
     return Response({"success": True})
 
 
-# ============================================================================
-# Operator-facing endpoints
-# ============================================================================
 
 def _check_operator(request):
+    """Единая проверка, что запрос пришел от авторизованного пользователя."""
     if not request.user or not request.user.is_authenticated:
         return Response({"error": "Authentication required"}, status=401)
     return None
@@ -146,11 +108,7 @@ def _check_operator(request):
 
 @api_view(["GET"])
 def catalog(request):
-    """
-    GET /api/v1/commands/catalog/
-
-    Returns the full list of available command types grouped by category.
-    """
+    """Отдает фронтенду список доступных команд из серверного каталога."""
     err = _check_operator(request)
     if err:
         return err
@@ -172,12 +130,10 @@ def catalog(request):
 @api_view(["GET", "POST"])
 def command_list_create(request):
     """
-    GET  /api/v1/commands/?device=<uuid>[&status=pending]
-         Returns command history for a device (latest 100).
+    Читает историю команд или создает новую команду для устройства.
 
-    POST /api/v1/commands/
-         Send a command to a device.
-         Body: {"device_id": "uuid", "command_key": "system_info", "params": {}}
+    Все выборки проходят через filter_devices_by_user, поэтому оператор не может
+    увидеть или отправить команду на чужое месторождение.
     """
     err = _check_operator(request)
     if err:
@@ -220,7 +176,6 @@ def command_list_create(request):
 
         return Response(data)
 
-    # POST — create command
     body        = request.data
     device_id   = body.get("device_id")
     command_key = body.get("command_key")
@@ -239,12 +194,12 @@ def command_list_create(request):
     except Device.DoesNotExist:
         return Response({"error": "Device not found"}, status=404)
 
-    # Prevent duplicate pending/running commands of the same type
     already = DeviceCommand.objects.filter(
         device=device,
         command_key=command_key,
         status__in=[CommandStatus.PENDING, CommandStatus.RUNNING],
     ).exists()
+    # Не ставим вторую такую же команду, пока первая еще не завершилась.
     if already:
         return Response(
             {"error": "This command is already pending or running on the device"},
@@ -278,10 +233,7 @@ def command_list_create(request):
 
 @api_view(["GET"])
 def command_detail(request, command_id):
-    """
-    GET /api/v1/commands/<id>/
-    Returns full details including output text.
-    """
+    """Возвращает подробности команды вместе с выводом терминала."""
     err = _check_operator(request)
     if err:
         return err
@@ -294,7 +246,6 @@ def command_detail(request, command_id):
     except DeviceCommand.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 
-    # Only allow access if operator owns it or is admin
     if (not request.user.is_admin
             and cmd.sent_by != request.user):
         return Response({"error": "Forbidden"}, status=403)
@@ -322,10 +273,7 @@ def command_detail(request, command_id):
 
 @api_view(["POST"])
 def command_cancel(request, command_id):
-    """
-    POST /api/v1/commands/<id>/cancel/
-    Cancel a pending command (cannot cancel running/completed).
-    """
+    """Отменяет команду, если она еще не перешла в финальное состояние."""
     err = _check_operator(request)
     if err:
         return err
@@ -348,9 +296,6 @@ def command_cancel(request, command_id):
     return Response({"success": True})
 
 
-# ---------------------------------------------------------------------------
-# URL patterns (included by api/v1/urls.py)
-# ---------------------------------------------------------------------------
 from django.urls import path  # noqa: E402
 
 urlpatterns = [

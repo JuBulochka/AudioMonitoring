@@ -4,14 +4,12 @@
 {% block page_title %}Карта устройств{% endblock %}
 
 {% block extra_head %}
-<!-- Яндекс Карты 2.1 (стабильный API) -->
 <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_api_key }}&lang=ru_RU&load=package.full" type="text/javascript"></script>
 
 <link rel="stylesheet" href="{% static 'css/pages/devices-map.css' %}">
 {% endblock %}
 
 {% block content %}
-<!-- Фильтры -->
 <div class="map-filters d-flex flex-wrap gap-2 align-items-center">
   <select id="f-region" class="form-select form-select-sm" style="width:160px">
     <option value="">Все регионы</option>
@@ -34,13 +32,9 @@
   </button>
   <span id="device-count" class="ms-auto"></span>
 </div>
-
-<!-- Карта + оверлеи -->
 <div style="position:relative">
   <div id="map"></div>
-
-  <!-- Легенда (снаружи #map) -->
-  <div id="map-legend">
+<div id="map-legend">
     <div class="leg-title">Статусы</div>
     <div class="leg-item"><div class="leg-dot" style="background:#28a745"></div>Норма</div>
     <div class="leg-item"><div class="leg-dot" style="background:#ffc107"></div>Требует проверки</div>

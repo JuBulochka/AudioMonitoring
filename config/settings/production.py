@@ -18,7 +18,6 @@ SECURE_HSTS_PRELOAD = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_BROWSER_XSS_FILTER = True
 
-# Storage
 if STORAGE_BACKEND == "s3":
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
     STATICFILES_STORAGE = "storages.backends.s3boto3.S3StaticStorage"
@@ -33,7 +32,6 @@ if STORAGE_BACKEND == "s3":
     AWS_QUERYSTRING_AUTH = True
     AWS_QUERYSTRING_EXPIRE = 3600
 
-# Sentry
 SENTRY_DSN = env("SENTRY_DSN", default="")
 if SENTRY_DSN:
     sentry_sdk.init(

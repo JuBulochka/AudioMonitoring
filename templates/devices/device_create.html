@@ -12,17 +12,13 @@
 {% block content %}
 <form method="post" class="row g-3">
   {% csrf_token %}
-
-  <!-- Column 1: Geographic hierarchy -->
-  <div class="col-lg-6">
+<div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header">
         <i class="bi bi-geo-alt me-1"></i>География
       </div>
       <div class="card-body">
-
-        <!-- Region -->
-        <div class="mb-3">
+<div class="mb-3">
           <label class="form-label small text-muted">Регион</label>
           <select name="region_id" class="form-select form-select-sm mb-1" onchange="toggleNew(this, 'region_new')">
             <option value="">— Создать новый —</option>
@@ -33,9 +29,7 @@
             <div class="col-4"><input type="text" name="region_code" class="form-control form-control-sm" placeholder="Код (TATARSTAN)"></div>
           </div>
         </div>
-
-        <!-- Field -->
-        <div class="mb-3">
+<div class="mb-3">
           <label class="form-label small text-muted">Месторождение</label>
           <select name="field_id" class="form-select form-select-sm mb-1" onchange="toggleNew(this, 'field_new')">
             <option value="">— Создать новое —</option>
@@ -46,9 +40,7 @@
             <div class="col-4"><input type="text" name="field_code" class="form-control form-control-sm" placeholder="Код (авто)"></div>
           </div>
         </div>
-
-        <!-- Site -->
-        <div class="mb-3">
+<div class="mb-3">
           <label class="form-label small text-muted">Куст скважин</label>
           <select name="site_id" class="form-select form-select-sm mb-1" onchange="toggleNew(this, 'site_new')">
             <option value="">— Создать новый —</option>
@@ -63,9 +55,7 @@
       </div>
     </div>
   </div>
-
-  <!-- Column 2: Device + pump jack -->
-  <div class="col-lg-6">
+<div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header">
         <i class="bi bi-cpu me-1"></i>Устройство и скважина
@@ -108,9 +98,7 @@
       </div>
     </div>
   </div>
-
-  <!-- Submit -->
-  <div class="col-12 d-flex justify-content-end gap-2">
+<div class="col-12 d-flex justify-content-end gap-2">
     <a href="{% url 'device-list' %}" class="btn btn-sm btn-outline-secondary">Отмена</a>
     <button type="submit" class="btn btn-sm btn-primary">
       <i class="bi bi-plus-circle me-1"></i>Создать устройство

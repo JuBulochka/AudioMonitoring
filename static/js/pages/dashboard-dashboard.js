@@ -1,4 +1,3 @@
-// Fetch dashboard data for chart
 fetch('/api/v1/dashboard/summary/')
   .then(r => r.json())
   .then(data => {
@@ -7,7 +6,6 @@ fetch('/api/v1/dashboard/summary/')
     const totals = hourly.map(h => h.total);
     const anomalies = hourly.map(h => h.anomaly);
 
-    // Theme-aware chart colors
     const cs = getComputedStyle(document.documentElement);
     const tickClr  = cs.getPropertyValue('--txt-muted').trim();
     const dimClr   = cs.getPropertyValue('--txt-dim').trim();

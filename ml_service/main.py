@@ -1,10 +1,4 @@
-"""
-ML Audio Analysis Microservice — FastAPI.
-
-Endpoints:
-  GET  /health       — liveness check
-  POST /analyze      — analyze audio file, return class scores
-"""
+"""FastAPI-сервис ML-анализа: health-check и анализ аудиофайла."""
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -20,13 +14,12 @@ logging.basicConfig(
 )
 log = logging.getLogger("ml_service")
 
-# ── Глобальный экземпляр анализатора ──────────────────────
 analyzer: Analyzer | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load ML models before first request, clean up on shutdown."""
+    """Загружает ML-модели при старте приложения."""
     global analyzer
     log.info("=== ML Service starting — loading models ===")
     analyzer = Analyzer()
@@ -35,7 +28,6 @@ async def lifespan(app: FastAPI):
         log.info("=== Models loaded successfully ===")
     except Exception as e:
         log.error("Failed to load models: %s", e)
-        # Service starts but /analyze will return 503
     yield
     log.info("=== ML Service shutting down ===")
 
@@ -47,10 +39,9 @@ app = FastAPI(
 )
 
 
-# ── Schemas ───────────────────────────────────────────────
 
 class AnalyzeRequest(BaseModel):
-    file_path: str          # absolute path inside container, e.g. /app/media/audio/...
+    file_path: str
 
 
 class AnalyzeResponse(BaseModel):
@@ -62,10 +53,10 @@ class AnalyzeResponse(BaseModel):
     yamnet_top5:   list[tuple[str, float]]
 
 
-# ── Endpoints ─────────────────────────────────────────────
 
 @app.get("/health")
 def health():
+    """Показывает, готов ли сервис принимать анализ аудио."""
     return {
         "status": "ok" if (analyzer and analyzer.ready) else "loading",
         "model_ready": analyzer.ready if analyzer else False,
@@ -74,6 +65,7 @@ def health():
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze(req: AnalyzeRequest):
+    """Запускает анализ файла и возвращает нормализованные оценки классов."""
     if not analyzer or not analyzer.ready:
         raise HTTPException(status_code=503, detail="Models are still loading, try again shortly")
 

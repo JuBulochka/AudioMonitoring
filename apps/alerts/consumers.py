@@ -30,7 +30,6 @@ class AlertConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data=None, bytes_data=None):
-        # Client can send {"type": "ping"} to keep connection alive
         pass
 
     async def alert_new(self, event):

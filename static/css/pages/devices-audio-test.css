@@ -22,7 +22,7 @@
 
   @keyframes progressPulse { 0%,100%{opacity:1} 50%{opacity:.65} }
 
-  /* custom file input */
+
   .file-pick-area {
     border:2px dashed var(--border-clr); border-radius:10px;
     padding:2rem 1.5rem; text-align:center;

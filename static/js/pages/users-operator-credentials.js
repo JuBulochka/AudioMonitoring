@@ -1,5 +1,4 @@
 (function () {
-  // Single field copy
   document.querySelectorAll('.copy-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var target = document.getElementById(this.dataset.target);
@@ -10,7 +9,6 @@
     }.bind(btn));
   });
 
-  // Copy all
   document.getElementById('copyAll').addEventListener('click', function () {
     var login    = document.getElementById('valLogin').textContent.trim();
     var password = document.getElementById('valPassword').textContent.trim();

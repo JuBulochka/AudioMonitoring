@@ -15,14 +15,12 @@ def readiness_check(request):
     """Readiness probe — checks DB and cache."""
     checks = {}
 
-    # DB check
     try:
         connection.ensure_connection()
         checks["database"] = "ok"
     except Exception as e:
         checks["database"] = f"error: {e}"
 
-    # Cache check
     try:
         cache.set("_health", "1", timeout=5)
         val = cache.get("_health")

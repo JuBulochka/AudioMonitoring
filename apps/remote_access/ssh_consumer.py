@@ -1,18 +1,4 @@
-"""
-SSH Terminal WebSocket Consumer
-================================
-Proxies a full interactive SSH session between the browser (xterm.js)
-and the Raspberry Pi via the reverse SSH tunnel.
-
-Flow:
-  Browser (xterm.js)
-    ↕ WebSocket  ws://.../ws/ssh/<device_id>/
-  Django Channels SSHTerminalConsumer
-    ↕ asyncssh
-  sshd container:  host=sshd, port=<device.tunnel_port>
-    ↕ reverse tunnel (Pi established this)
-  Raspberry Pi sshd  port 22
-"""
+"""WebSocket-прокси между браузерным терминалом и Raspberry Pi через SSH-туннель."""
 import asyncio
 import json
 import logging
@@ -26,10 +12,9 @@ from django.utils import timezone
 
 logger = logging.getLogger("apps.remote_access")
 
-# Message types sent to browser
-MSG_OUTPUT = "output"   # raw terminal bytes → base64 encoded
-MSG_STATUS = "status"   # "connecting" | "connected" | "disconnected" | "error"
-MSG_RESIZE = "resize"   # ack (not sent to browser, received from browser)
+MSG_OUTPUT = "output"
+MSG_STATUS = "status"
+MSG_RESIZE = "resize"
 
 
 def _platform_key_path() -> str:
@@ -50,22 +35,10 @@ def _pi_user() -> str:
 
 class SSHTerminalConsumer(AsyncWebsocketConsumer):
     """
-    WebSocket consumer that creates a live SSH session to a Raspberry Pi.
+    Создает живую SSH-сессию к устройству и прокидывает ее в xterm.js.
 
-    URL: ws://<host>/ws/ssh/<device_id>/
-
-    Protocol (browser → server):
-        Binary frames  → forwarded as stdin to SSH
-        Text frames    → JSON control messages:
-            {"type": "resize", "cols": 120, "rows": 30}
-            {"type": "ping"}
-
-    Protocol (server → browser):
-        Binary frames  → raw SSH stdout/stderr bytes
-        Text frames    → JSON status:
-            {"type": "status", "status": "connecting", "message": "..."}
-            {"type": "status", "status": "connected",  "message": "..."}
-            {"type": "status", "status": "error",      "message": "..."}
+    Бинарные WebSocket-фреймы идут как ввод/вывод терминала, а текстовые JSON
+    используются только для служебных событий: resize, status и ошибки.
     """
 
     ssh_conn = None
@@ -73,9 +46,6 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
     _read_task = None
     _ssh_user = None
 
-    # -------------------------------------------------------------------------
-    # Lifecycle
-    # -------------------------------------------------------------------------
 
     async def connect(self):
         user = self.scope.get("user")
@@ -105,7 +75,6 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
         self.device = device
         await self.accept()
 
-        # Log audit
         await self._create_session_log()
 
         await self._send_status("connecting", f"Подключение к {device.serial_number}…")
@@ -132,7 +101,6 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
             return
 
         if bytes_data:
-            # Raw keyboard input → stdin (process opened with encoding=None → expects bytes)
             try:
                 self.ssh_process.stdin.write(bytes_data)
             except Exception as e:
@@ -146,15 +114,11 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
                     rows = int(msg.get("rows", 24))
                     self.ssh_process.change_terminal_size(width=cols, height=rows)
             except (json.JSONDecodeError, ValueError):
-                # Treat as raw text input
                 try:
                     self.ssh_process.stdin.write(text_data.encode("utf-8"))
                 except Exception:
                     pass
 
-    # -------------------------------------------------------------------------
-    # SSH connection
-    # -------------------------------------------------------------------------
 
     async def _start_ssh(self):
         key_path = _platform_key_path()
@@ -181,9 +145,9 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
                 port=tunnel_port,
                 username=pi_user,
                 client_keys=[key_path],
-                known_hosts=None,           # No host key checking (tunneled connection)
+                known_hosts=None,
                 connect_timeout=15,
-                encoding=None,              # Raw bytes mode
+                encoding=None,
             )
 
             self.ssh_process = await self.ssh_conn.create_process(
@@ -195,7 +159,6 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
             await self._send_status("connected", f"Подключено к {self.device.serial_number}")
             await self._mark_session_active()
 
-            # Start background task: SSH stdout → WebSocket
             self._read_task = asyncio.ensure_future(self._ssh_to_ws())
 
         except asyncssh.DisconnectError as e:
@@ -225,7 +188,7 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
             await self.close()
 
     async def _ssh_to_ws(self):
-        """Continuously read SSH stdout and forward to WebSocket."""
+        """Читает stdout/stderr SSH-процесса и передает байты в браузер."""
         sent_any_output = False
         try:
             while True:
@@ -247,9 +210,6 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
             except Exception:
                 pass
 
-    # -------------------------------------------------------------------------
-    # Helpers
-    # -------------------------------------------------------------------------
 
     async def _send_status(self, status: str, message: str):
         try:
@@ -261,9 +221,6 @@ class SSHTerminalConsumer(AsyncWebsocketConsumer):
         except Exception:
             pass
 
-    # -------------------------------------------------------------------------
-    # DB helpers (run in thread pool)
-    # -------------------------------------------------------------------------
 
     @database_sync_to_async
     def _get_device(self, device_id):

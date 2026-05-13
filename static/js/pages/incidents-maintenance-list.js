@@ -3,7 +3,6 @@ function getCookie(name) {
   return v ? v.pop() : '';
 }
 
-// ── Смена статуса через select ──────────────────────────────────────────────
 function changeStatus(taskId, newStatus, selectEl) {
   const orig = selectEl.dataset.orig || selectEl.value;
   fetch(`/api/v1/tasks/${taskId}/status/`, {
@@ -12,7 +11,6 @@ function changeStatus(taskId, newStatus, selectEl) {
     body: JSON.stringify({status: newStatus})
   }).then(r => {
     if (r.ok) {
-      // Visual feedback — briefly highlight row
       const row = document.getElementById('task-row-' + taskId);
       if (row) {
         row.style.transition = 'background .3s';
@@ -27,7 +25,6 @@ function changeStatus(taskId, newStatus, selectEl) {
   }).catch(() => { alert('Ошибка сети'); selectEl.value = orig; });
 }
 
-// ── Кнопка «Выполнено» ─────────────────────────────────────────────────────
 let _doneTaskId = null;
 
 function markDone(taskId) {
@@ -50,7 +47,6 @@ function submitDone() {
   });
 }
 
-// ── Создать задачу ─────────────────────────────────────────────────────────
 function showCreateModal() {
   document.getElementById('c-error').style.display = 'none';
   new bootstrap.Modal(document.getElementById('createModal')).show();

@@ -4,7 +4,6 @@
 {% block page_title %}Дашборд{% endblock %}
 
 {% block content %}
-<!-- Stat cards -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-card">
@@ -33,8 +32,7 @@
 </div>
 
 <div class="row g-3">
-  <!-- Recent incidents -->
-  <div class="col-12 col-xl-7">
+<div class="col-12 col-xl-7">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between py-2">
         <span class="fw-semibold" style="font-size:.9rem"><i class="bi bi-exclamation-triangle me-2"></i>Последние инциденты (24ч)</span>
@@ -76,9 +74,7 @@
       </div>
     </div>
   </div>
-
-  <!-- Notifications + chart -->
-  <div class="col-12 col-xl-5">
+<div class="col-12 col-xl-5">
     <div class="card mb-3">
       <div class="card-header d-flex align-items-center justify-content-between py-2">
         <span class="fw-semibold" style="font-size:.9rem"><i class="bi bi-bell me-2"></i>Уведомления</span>
@@ -106,9 +102,7 @@
         {% endfor %}
       </div>
     </div>
-
-    <!-- Hourly activity chart -->
-    <div class="card">
+<div class="card">
       <div class="card-header py-2">
         <span class="fw-semibold" style="font-size:.9rem"><i class="bi bi-bar-chart me-2"></i>Активность (24ч)</span>
       </div>

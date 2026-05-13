@@ -1,15 +1,4 @@
-"""
-Device-facing API endpoints.
-Edge devices (Raspberry Pi) call these endpoints to:
-- Send heartbeat
-- Submit audio packets
-- Report critical incidents
-- Poll for remote access tokens
-- Report software versions
-
-Authentication: X-Device-Key header (pre-shared per-device token).
-All endpoints use DeviceAuthMiddleware to populate request.device.
-"""
+"""API для Raspberry Pi: heartbeat, аудиопакеты, версии и ключи настройки."""
 import logging
 
 from django.conf import settings
@@ -27,16 +16,13 @@ from apps.alerts.services import create_disk_critical_alert, create_high_temp_al
 
 logger = logging.getLogger("apps.devices")
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 DISK_CRITICAL_THRESHOLD = 90.0
 TEMP_CRITICAL_THRESHOLD = 80.0
 
 
 def _require_device(request):
-    """Return 401 if device not authenticated."""
+    """Возвращает 401, если middleware не определил устройство по X-Device-Key."""
     if not request.device:
         return Response(
             {"success": False, "error": "Invalid or missing X-Device-Key"},
@@ -45,33 +31,13 @@ def _require_device(request):
     return None
 
 
-# ---------------------------------------------------------------------------
-# Heartbeat
-# ---------------------------------------------------------------------------
 
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
 @throttle_classes([DeviceRateThrottle])
 def heartbeat(request):
-    """
-    POST /api/v1/device/heartbeat/
-
-    Payload example:
-    {
-        "cpu_temp": 52.3,
-        "cpu_usage": 18.5,
-        "memory_total_mb": 4096,
-        "memory_used_mb": 1820,
-        "disk_total_gb": 32.0,
-        "disk_used_gb": 7.4,
-        "firmware_version": "1.2.3",
-        "model_version": "0.9.1",
-        "uptime_seconds": 86400,
-        "network_ssid": "field_wifi_01",
-        "signal_strength_dbm": -65
-    }
-    """
+    """Принимает heartbeat от устройства и обновляет его онлайн-состояние."""
     err = _require_device(request)
     if err:
         return err
@@ -97,7 +63,6 @@ def heartbeat(request):
 
     update_device_from_heartbeat(device, hb)
 
-    # Check for alerts
     if hb.disk_usage_pct and hb.disk_usage_pct >= DISK_CRITICAL_THRESHOLD:
         create_disk_critical_alert(device, hb.disk_usage_pct)
 
@@ -107,15 +72,11 @@ def heartbeat(request):
     return Response({
         "success": True,
         "heartbeat_id": hb.id,
-        # Return tunnel ports so Pi can always maintain reverse tunnels
         "tunnel_port":     device.tunnel_port,
         "vnc_tunnel_port": device.vnc_tunnel_port,
     }, status=status.HTTP_200_OK)
 
 
-# ---------------------------------------------------------------------------
-# Audio Packet submission
-# ---------------------------------------------------------------------------
 
 @api_view(["POST"])
 @authentication_classes([])
@@ -123,42 +84,10 @@ def heartbeat(request):
 @throttle_classes([DeviceRateThrottle])
 def submit_packet(request):
     """
-    POST /api/v1/device/packet/
+    Принимает аудиопакет от устройства.
 
-    Multipart form data:
-    - audio_file: binary audio file (WAV/MP3)
-    - data: JSON string with analysis results and metadata
-
-    OR JSON body (when audio already uploaded separately or not included):
-    {
-        "recorded_at": "2024-01-15T10:00:00Z",
-        "duration_seconds": 30.0,
-        "analysis": {
-            "normal": 0.05,
-            "noise": 0.10,
-            "grinding": 0.75,
-            "squeak": 0.02,
-            "knock": 0.03,
-            "whistle": 0.01,
-            "foreign_sounds": 0.01,
-            "speech": 0.01,
-            "other_anomaly": 0.02
-        },
-        "device_state": {
-            "cpu_temp": 52.3,
-            "cpu_usage": 18.5,
-            "memory_usage_pct": 44.5,
-            "disk_usage_pct": 23.1,
-            "firmware_version": "1.2.3",
-            "model_version": "0.9.1"
-        },
-        "audio_meta": {
-            "sample_rate": 44100,
-            "channels": 1,
-            "format": "wav",
-            "file_size_bytes": 1234567
-        }
-    }
+    Поддерживается multipart с файлом и обычный JSON без файла: это нужно,
+    чтобы устройство могло работать даже при временно отключенной отправке аудио.
     """
     err = _require_device(request)
     if err:
@@ -166,7 +95,6 @@ def submit_packet(request):
 
     device = request.device
 
-    # Handle both JSON body and multipart
     if request.content_type and "multipart" in request.content_type:
         import json
         try:
@@ -181,7 +109,6 @@ def submit_packet(request):
         data = request.data
         audio_file = None
 
-    # Validate required fields
     if "recorded_at" not in data:
         return Response(
             {"success": False, "error": "recorded_at is required"},
@@ -194,7 +121,6 @@ def submit_packet(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Validate audio file size
     if audio_file:
         max_bytes = settings.AUDIO_MAX_FILE_SIZE_MB * 1024 * 1024
         if audio_file.size > max_bytes:
@@ -223,21 +149,12 @@ def submit_packet(request):
     )
 
 
-# ---------------------------------------------------------------------------
-# Critical incident (urgent, bypasses rate limit)
-# ---------------------------------------------------------------------------
 
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
 def report_critical(request):
-    """
-    POST /api/v1/device/critical/
-
-    Urgent report — device detected a critical anomaly and sends it
-    immediately without waiting for the next scheduled packet.
-    Same payload as submit_packet.
-    """
+    """Принимает срочный пакет, когда устройство само обнаружило критичную аномалию."""
     err = _require_device(request)
     if err:
         return err
@@ -262,24 +179,13 @@ def report_critical(request):
     )
 
 
-# ---------------------------------------------------------------------------
-# Software version report
-# ---------------------------------------------------------------------------
 
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
 @throttle_classes([DeviceRateThrottle])
 def report_version(request):
-    """
-    POST /api/v1/device/version/
-    {
-        "firmware_version": "1.2.3",
-        "model_version": "0.9.1",
-        "os_version": "Debian 12",
-        "python_version": "3.12.0"
-    }
-    """
+    """Сохраняет версию прошивки, модели и окружения устройства."""
     err = _require_device(request)
     if err:
         return err
@@ -303,21 +209,13 @@ def report_version(request):
     return Response({"success": True})
 
 
-# ---------------------------------------------------------------------------
-# Poll for remote access commands
-# ---------------------------------------------------------------------------
 
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
 @throttle_classes([DeviceRateThrottle])
 def poll_remote_access(request):
-    """
-    GET /api/v1/device/remote-poll/
-
-    Device polls this endpoint to check if a remote access session is pending.
-    Returns session token if active, empty if none.
-    """
+    """Позволяет устройству проверить, ожидает ли его активная сессия доступа."""
     err = _require_device(request)
     if err:
         return err
@@ -345,24 +243,12 @@ def poll_remote_access(request):
     })
 
 
-# ---------------------------------------------------------------------------
-# Confirm tunnel established (device calls this when tunnel is up)
-# ---------------------------------------------------------------------------
 
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
 def confirm_tunnel(request):
-    """
-    POST /api/v1/device/remote-confirm/
-    {
-        "session_id": "...",
-        "access_token": "...",
-        "tunnel_host": "0.tcp.ngrok.io",
-        "tunnel_port": 12345,
-        "tunnel_type": "ssh"
-    }
-    """
+    """Подтверждает, что устройство подняло reverse-туннель для удаленного доступа."""
     err = _require_device(request)
     if err:
         return err
@@ -395,21 +281,13 @@ def confirm_tunnel(request):
     return Response({"success": True})
 
 
-# ---------------------------------------------------------------------------
-# Platform public key — Pi fetches this during pi_setup.sh to authorize
-# the platform's SSH access
-# ---------------------------------------------------------------------------
 
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
-@throttle_classes([])          # setup-only endpoint — no throttling needed
+@throttle_classes([])
 def platform_pubkey(request):
-    """
-    GET /api/v1/device/platform-pubkey/
-    Returns the platform SSH public key so Pi can add it to ~/.ssh/authorized_keys.
-    Authenticated by X-Device-Key header.
-    """
+    """Отдает публичный SSH-ключ платформы для установки на Raspberry Pi."""
     import os
     from django.conf import settings as _s
 
@@ -430,20 +308,13 @@ def platform_pubkey(request):
     return Response({"public_key": pubkey})
 
 
-# ---------------------------------------------------------------------------
-# Tunnel private key — Pi fetches this to establish reverse SSH tunnel.
-# ---------------------------------------------------------------------------
 
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
-@throttle_classes([])          # setup-only endpoint — no throttling needed
+@throttle_classes([])
 def tunnel_privkey(request):
-    """
-    GET /api/v1/device/tunnel-key/
-    Returns the private SSH key Pi must use to establish the reverse tunnel.
-    Authenticated by X-Device-Key header.
-    """
+    """Отдает приватный ключ, которым Raspberry Pi поднимает reverse-туннель."""
     import os
     from django.conf import settings as _s
     from django.http import HttpResponse
@@ -461,17 +332,13 @@ def tunnel_privkey(request):
     return HttpResponse(privkey, content_type="text/plain")
 
 
-# ---------------------------------------------------------------------------
-# Edge client script — Pi downloads edge_client.py from here.
-# Authenticated so random people can't grab internal scripts.
-# ---------------------------------------------------------------------------
 
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([IsDeviceAuthenticated])
-@throttle_classes([])          # setup-only endpoint — no throttling needed
+@throttle_classes([])
 def edge_client_script(request):
-    """GET /api/v1/device/edge-client/ — serves scripts/edge_client.py."""
+    """Отдает актуальный edge_client.py для установочного скрипта."""
     import os
     from django.conf import settings as _s
     from django.http import HttpResponse
@@ -483,18 +350,13 @@ def edge_client_script(request):
         return HttpResponse(f.read(), content_type="text/x-python")
 
 
-# ---------------------------------------------------------------------------
-# One-command installer — generates a ready-to-run bash script for a device.
-# No auth required: the device key IS the secret in the URL.
-# Usage on Pi:  curl -fsSL https://<host>/api/v1/install/<key>/ | bash
-# ---------------------------------------------------------------------------
 
 def install_script(request, device_key):
     """
-    GET /api/v1/install/<device_key>/
-    Returns a complete bash installer that sets up the edge client on a Pi.
-    No X-Device-Key header required — the key is embedded in the URL so the
-    operator can simply copy-paste a single curl command from the setup page.
+    Генерирует bash-установщик для конкретного устройства.
+
+    Ключ устройства уже находится в URL, поэтому оператор может выполнить одну
+    команду curl с экрана настройки без ручного редактирования файла.
     """
     import os
     import textwrap
@@ -514,12 +376,6 @@ def install_script(request, device_key):
     tunnel_ssh_port = getattr(settings, "TUNNEL_SSH_PORT", 2222)
 
     script = textwrap.dedent(f"""\
-        #!/usr/bin/env bash
-        # ============================================================
-        #  PumpJack Edge — автоустановка для устройства {device.serial_number}
-        #  Сервер:  {server_url}
-        #  Запуск:  curl -fsSL {server_url}/api/v1/install/{device_key}/ | bash
-        # ============================================================
         set -e
 
         DEVICE_KEY="{device_key}"
@@ -538,17 +394,14 @@ def install_script(request, device_key):
         echo "╚══════════════════════════════════════════════════╝"
         echo ""
 
-        # ── 1. Системные зависимости ──────────────────────────────
         echo "▶ Установка зависимостей..."
         sudo apt-get update -qq
         sudo apt-get install -y -qq autossh python3-requests curl
 
-        # ── 2. Рабочая директория ─────────────────────────────────
         echo "▶ Создание $BASE_DIR..."
         mkdir -p "$BASE_DIR"
         cd "$BASE_DIR"
 
-        # ── 3. Конфигурационный файл .env ─────────────────────────
         echo "▶ Запись .env..."
         cat > "$BASE_DIR/.env" << ENVEOF
 SERVER_URL={server_url}
@@ -562,19 +415,16 @@ FIRMWARE_VERSION=1.3.2
 MODEL_VERSION=0.9.4
 ENVEOF
 
-        # ── 4. SSH-директория ─────────────────────────────────────
         echo "▶ Настройка SSH..."
         sudo chown -R "$CURRENT_USER:$CURRENT_USER" "$CURRENT_HOME/.ssh" 2>/dev/null || true
         mkdir -p "$CURRENT_HOME/.ssh" && chmod 700 "$CURRENT_HOME/.ssh"
 
-        # ── 5. Ключ туннеля (Pi → сервер) ────────────────────────
         echo "▶ Загрузка ключа туннеля..."
         curl -fsSL -H "X-Device-Key: $DEVICE_KEY" \\
             "$SERVER_URL/api/v1/device/tunnel-key/" \\
             -o "$CURRENT_HOME/.ssh/pumpjack_tunnel_key"
         chmod 600 "$CURRENT_HOME/.ssh/pumpjack_tunnel_key"
 
-        # ── 6. Публичный ключ платформы (сервер → Pi) ────────────
         echo "▶ Добавление публичного ключа платформы..."
         PUB=$(curl -fsSL -H "X-Device-Key: $DEVICE_KEY" \\
                 "$SERVER_URL/api/v1/device/platform-pubkey/" \\
@@ -582,14 +432,12 @@ ENVEOF
         touch "$CURRENT_HOME/.ssh/authorized_keys" && chmod 600 "$CURRENT_HOME/.ssh/authorized_keys"
         grep -qxF "$PUB" "$CURRENT_HOME/.ssh/authorized_keys" 2>/dev/null || echo "$PUB" >> "$CURRENT_HOME/.ssh/authorized_keys"
 
-        # ── 7. Edge-клиент ────────────────────────────────────────
         echo "▶ Загрузка edge_client.py..."
         curl -fsSL -H "X-Device-Key: $DEVICE_KEY" \\
             "$SERVER_URL/api/v1/device/edge-client/" \\
             -o "$BASE_DIR/edge_client.py"
         chmod +x "$BASE_DIR/edge_client.py"
 
-        # ── 8. Systemd-сервис ─────────────────────────────────────
         echo "▶ Создание systemd-сервиса $SERVICE_NAME..."
         sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null << SVCEOF
 [Unit]
@@ -637,17 +485,11 @@ SVCEOF
     return HttpResponse(script, content_type="text/x-shellscript")
 
 
-# ---------------------------------------------------------------------------
-# Command dispatch — delegate to commands_endpoints (avoids circular import)
-# ---------------------------------------------------------------------------
 from api.v1.commands_endpoints import (  # noqa: E402
     device_poll_commands as _device_poll_commands,
     device_report_result as _device_report_result,
 )
 
-# ---------------------------------------------------------------------------
-# URL patterns
-# ---------------------------------------------------------------------------
 from django.urls import path  # noqa: E402
 
 urlpatterns = [
@@ -660,7 +502,6 @@ urlpatterns = [
     path("platform-pubkey/", platform_pubkey, name="device-platform-pubkey"),
     path("tunnel-key/", tunnel_privkey, name="device-tunnel-key"),
     path("edge-client/", edge_client_script, name="device-edge-client"),
-    # Command dispatch (Pi polls for commands, reports results)
     path("commands/", _device_poll_commands, name="device-commands-poll"),
     path("commands/<uuid:command_id>/result/", _device_report_result, name="device-commands-result"),
 ]

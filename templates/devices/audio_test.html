@@ -10,18 +10,14 @@
 
 {% block content %}
 <div class="row g-4">
-
-  <!-- LEFT: Upload -->
-  <div class="col-lg-5">
+<div class="col-lg-5">
     <div class="card border shadow-sm">
       <div class="card-header fw-semibold d-flex align-items-center gap-2">
         <i class="bi bi-upload"></i> Загрузить аудиофайл
       </div>
       <div class="card-body">
         {% csrf_token %}
-
-        <!-- File picker -->
-        <div class="file-pick-area" id="file-pick-area" onclick="document.getElementById('audio-file-input').click()">
+<div class="file-pick-area" id="file-pick-area" onclick="document.getElementById('audio-file-input').click()">
           <div style="font-size:2rem;color:var(--txt-dim)"><i class="bi bi-file-earmark-music"></i></div>
           <div class="mt-2 fw-semibold" style="color:var(--txt-primary)">Нажмите для выбора файла</div>
           <div style="font-size:.8rem;color:var(--txt-muted)">или перетащите сюда</div>
@@ -38,18 +34,12 @@
       </div>
     </div>
   </div>
-
-  <!-- RIGHT: Results -->
-  <div class="col-lg-7">
-
-    <!-- Empty state -->
-    <div id="empty-state" class="card border text-center" style="padding:3rem 2rem">
+<div class="col-lg-7">
+<div id="empty-state" class="card border text-center" style="padding:3rem 2rem">
       <div style="font-size:3rem;color:var(--txt-dim)"><i class="bi bi-soundwave"></i></div>
       <div class="mt-2" style="color:var(--txt-muted)">Загрузите файл и нажмите «Анализировать»</div>
     </div>
-
-    <!-- Loading -->
-    <div id="loading-state" class="card border d-none" style="padding:2rem">
+<div id="loading-state" class="card border d-none" style="padding:2rem">
       <div class="d-flex align-items-center gap-3 mb-3">
         <div class="spinner-border text-primary flex-shrink-0" style="width:2.2rem;height:2.2rem"></div>
         <div>
@@ -84,9 +74,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Results -->
-    <div id="results-area" style="display:none">
+<div id="results-area" style="display:none">
       <div class="card border shadow-sm mb-3">
         <div class="card-header fw-semibold d-flex align-items-center gap-2">
           <i class="bi bi-bar-chart-line"></i> Результат анализа

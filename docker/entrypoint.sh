@@ -30,7 +30,7 @@ else:
     print('Superuser already exists.')
 "
 
-# Generate platform SSH key (used by web terminal to SSH into Pi through reverse tunnel)
+# Ключ платформы нужен веб-терминалу для входа на Raspberry Pi через reverse-туннель.
 PLATFORM_KEY_DIR="/app/media/platform"
 mkdir -p "$PLATFORM_KEY_DIR"
 if [ ! -f "$PLATFORM_KEY_DIR/platform_key" ]; then
@@ -42,19 +42,17 @@ else
     echo "==> Platform SSH key already exists"
 fi
 
-# Generate tunnel SSH key (used by Pi to establish reverse tunnel into sshd container)
+# Ключ туннеля используется Raspberry Pi для подключения к sshd-контейнеру.
 if [ ! -f "$PLATFORM_KEY_DIR/tunnel_key" ]; then
     ssh-keygen -t ed25519 -f "$PLATFORM_KEY_DIR/tunnel_key" -N "" -q -C "pumpjack-tunnel"
     chmod 600 "$PLATFORM_KEY_DIR/tunnel_key"
     chmod 644 "$PLATFORM_KEY_DIR/tunnel_key.pub"
     echo "==> Tunnel SSH key generated: $PLATFORM_KEY_DIR/tunnel_key"
-    # Write public key to sshd authorized_keys so all Pis can establish tunnels
     cp "$PLATFORM_KEY_DIR/tunnel_key.pub" /app/docker/sshd/authorized_keys
     chmod 644 /app/docker/sshd/authorized_keys
     echo "==> Tunnel pubkey installed into sshd authorized_keys"
 else
     echo "==> Tunnel SSH key already exists"
-    # Ensure pubkey is in authorized_keys (idempotent)
     cp "$PLATFORM_KEY_DIR/tunnel_key.pub" /app/docker/sshd/authorized_keys
     chmod 644 /app/docker/sshd/authorized_keys
 fi

@@ -58,7 +58,6 @@ class Alert(models.Model):
     message = models.TextField()
     payload = models.JSONField(default=dict)  # extra context for frontend rendering
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    # Dedup: prevent duplicate alerts within time window
     dedup_key = models.CharField(max_length=128, blank=True, db_index=True)
 
     class Meta:

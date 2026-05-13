@@ -1,4 +1,4 @@
-"""Dashboard summary API — aggregated stats for the main dashboard."""
+"""API сводки для главного дашборда."""
 from datetime import timedelta
 
 from django.db import models
@@ -11,10 +11,7 @@ from rest_framework.response import Response
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_summary(request):
-    """
-    GET /api/v1/dashboard/summary/
-    Returns key metrics for the operator dashboard.
-    """
+    """Считает основные показатели для виджетов и графика активности."""
     from apps.devices.models import Device, DeviceStatus
     from apps.packets.models import AudioPacket, SeverityLevel
     from apps.incidents.models import Incident, IncidentStatus
@@ -49,7 +46,6 @@ def dashboard_summary(request):
         user=request.user, is_read=False, is_dismissed=False
     ).count()
 
-    # Top 5 most problematic devices in last 7 days
     top_devices = list(
         AudioPacket.objects
         .filter(has_anomaly=True, recorded_at__gte=last_7d)
@@ -58,7 +54,6 @@ def dashboard_summary(request):
         .order_by("-anomaly_count")[:5]
     )
 
-    # Hourly packet counts for last 24h chart
     hourly_counts = []
     for i in range(24):
         hour_start = last_24h + timedelta(hours=i)

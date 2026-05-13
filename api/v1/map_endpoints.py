@@ -1,4 +1,4 @@
-"""Map API — optimized for Leaflet.js marker rendering."""
+"""API карты: отдает легкие маркеры устройств для фронтенда."""
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -23,21 +23,13 @@ STATUS_COLOR = {
 @permission_classes([IsAuthenticated])
 def map_devices(request):
     """
-    GET /api/v1/map/devices/
+    Возвращает устройства в текущей области карты.
 
-    Query params:
-    - sw_lat, sw_lng, ne_lat, ne_lng  (viewport bounding box)
-    - region  (comma-separated IDs)
-    - status  (comma-separated)
-    - online_only (true/false)
-    - anomaly_only (true/false)
-
-    Returns a flat list of GeoJSON-like features for Leaflet clustering.
-    Only returns fields needed for map markers — lean response.
+    На этом уровне уже применяется доступ пользователя, поэтому оператор получает
+    маркеры только по закрепленным за ним месторождениям.
     """
     params = request.query_params
 
-    # Bounding box filter — only load visible devices
     bbox = None
     try:
         sw_lat = params.get("sw_lat")

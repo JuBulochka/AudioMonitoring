@@ -8,9 +8,6 @@ from pathlib import Path
 
 import environ
 
-# ---------------------------------------------------------------------------
-# Base paths
-# ---------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(
@@ -33,16 +30,10 @@ env_file = BASE_DIR / ".env"
 if env_file.exists():
     environ.Env.read_env(str(env_file))
 
-# ---------------------------------------------------------------------------
-# Core
-# ---------------------------------------------------------------------------
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
-# ---------------------------------------------------------------------------
-# Applications
-# ---------------------------------------------------------------------------
 DJANGO_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -80,9 +71,6 @@ LOCAL_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
-# ---------------------------------------------------------------------------
-# Middleware
-# ---------------------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -101,9 +89,6 @@ ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# ---------------------------------------------------------------------------
-# Templates
-# ---------------------------------------------------------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -121,9 +106,6 @@ TEMPLATES = [
     },
 ]
 
-# ---------------------------------------------------------------------------
-# Database — PostgreSQL
-# ---------------------------------------------------------------------------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -139,9 +121,6 @@ DATABASES = {
     }
 }
 
-# ---------------------------------------------------------------------------
-# Cache — Redis
-# ---------------------------------------------------------------------------
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -162,9 +141,6 @@ SESSION_COOKIE_AGE = 86400 * 7  # 7 days
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
-# ---------------------------------------------------------------------------
-# Channels
-# ---------------------------------------------------------------------------
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -174,9 +150,6 @@ CHANNEL_LAYERS = {
     },
 }
 
-# ---------------------------------------------------------------------------
-# Auth
-# ---------------------------------------------------------------------------
 AUTH_USER_MODEL = "users.User"
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -190,9 +163,6 @@ LOGIN_URL = "/auth/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/auth/login/"
 
-# ---------------------------------------------------------------------------
-# DRF
-# ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -222,9 +192,6 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.common.exceptions.custom_exception_handler",
 }
 
-# ---------------------------------------------------------------------------
-# JWT
-# ---------------------------------------------------------------------------
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env("JWT_ACCESS_TOKEN_LIFETIME_MINUTES")),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=env("JWT_REFRESH_TOKEN_LIFETIME_DAYS")),
@@ -237,9 +204,6 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM": "user_id",
 }
 
-# ---------------------------------------------------------------------------
-# DRF Spectacular (OpenAPI)
-# ---------------------------------------------------------------------------
 SPECTACULAR_SETTINGS = {
     "TITLE": "PumpJack Audio Monitor API",
     "DESCRIPTION": (
@@ -256,9 +220,6 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-# ---------------------------------------------------------------------------
-# Celery
-# ---------------------------------------------------------------------------
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/1")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://localhost:6379/2")
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -271,9 +232,6 @@ CELERY_TASK_TIME_LIMIT = 300  # 5 minutes hard limit
 CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
 
-# ---------------------------------------------------------------------------
-# Static / Media files
-# ---------------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
@@ -283,28 +241,16 @@ MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / "media")))
 
 STORAGE_BACKEND = env("STORAGE_BACKEND")
 
-# ---------------------------------------------------------------------------
-# Internationalization
-# ---------------------------------------------------------------------------
 LANGUAGE_CODE = "ru"
 TIME_ZONE = "Europe/Moscow"
 USE_I18N = True
 USE_TZ = True
 
-# ---------------------------------------------------------------------------
-# Default PK
-# ---------------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ---------------------------------------------------------------------------
-# Security — base values (overridden per environment)
-# ---------------------------------------------------------------------------
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
 LOGS_DIR = BASE_DIR / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
 
@@ -353,9 +299,6 @@ LOGGING = {
     },
 }
 
-# ---------------------------------------------------------------------------
-# Domain settings
-# ---------------------------------------------------------------------------
 OFFLINE_THRESHOLD_MINUTES = env("OFFLINE_THRESHOLD_MINUTES")
 AUDIO_RETENTION_DAYS = env("AUDIO_RETENTION_DAYS")
 AUDIO_MAX_FILE_SIZE_MB = env("AUDIO_MAX_FILE_SIZE_MB")
@@ -363,15 +306,9 @@ REMOTE_ACCESS_TOKEN_TTL_MINUTES = env("REMOTE_ACCESS_TOKEN_TTL_MINUTES")
 DEVICE_TOKEN_SALT = env("DEVICE_TOKEN_SALT", default="default-salt-change")
 YANDEX_MAPS_API_KEY = env("YANDEX_MAPS_API_KEY", default="")
 
-# ---------------------------------------------------------------------------
-# ML Service
-# ---------------------------------------------------------------------------
 ML_SERVICE_URL     = env("ML_SERVICE_URL")
 ML_SERVICE_TIMEOUT = env("ML_SERVICE_TIMEOUT")
 
-# ---------------------------------------------------------------------------
-# Email
-# ---------------------------------------------------------------------------
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = env("EMAIL_HOST", default="localhost")
 EMAIL_PORT = env.int("EMAIL_PORT", default=25)
@@ -382,21 +319,12 @@ DEFAULT_FROM_EMAIL = env("ALERT_EMAIL_FROM", default="noreply@pumpjack.local")
 ALERT_EMAIL_RECIPIENTS = env.list("ALERT_EMAIL_RECIPIENTS", default=[])
 CRITICAL_ALERT_EMAIL_ENABLED = env.bool("CRITICAL_ALERT_EMAIL_ENABLED", default=False)
 
-# ---------------------------------------------------------------------------
-# SSH Web Terminal
-# ---------------------------------------------------------------------------
-# Host where the SSH jump server (sshd container) is reachable from Django
 SSHD_HOST = env("SSHD_HOST", default="sshd")
-# Linux username on the Raspberry Pi
 PI_SSH_USER = env("PI_SSH_USER", default="pi")
-# Private key used by Django to SSH into Pi (generated by entrypoint.sh)
 PLATFORM_SSH_KEY_PATH = env(
     "PLATFORM_SSH_KEY_PATH",
     default=str(BASE_DIR / "media" / "platform" / "platform_key"),
 )
 
-# ---------------------------------------------------------------------------
-# CORS
-# ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])
 CORS_ALLOW_CREDENTIALS = True

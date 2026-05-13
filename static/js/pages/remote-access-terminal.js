@@ -1,7 +1,6 @@
 const WS_URL = (location.protocol === 'https:' ? 'wss' : 'ws')
              + '://' + location.host + '/ws/ssh/' + DEVICE_ID + '/';
 
-// ── xterm.js setup ──────────────────────────────────────────────────────────
 const term = new Terminal({
   theme: {
     background: '#0d1117',
@@ -39,7 +38,6 @@ term.loadAddon(new WebLinksAddon.WebLinksAddon());
 term.open(document.getElementById('terminal'));
 fitAddon.fit();
 
-// Resize observer
 const resizeObserver = new ResizeObserver(() => {
   fitAddon.fit();
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -48,10 +46,10 @@ const resizeObserver = new ResizeObserver(() => {
 });
 resizeObserver.observe(document.getElementById('terminal-container'));
 
-// ── WebSocket ────────────────────────────────────────────────────────────────
 let ws = null;
 
 function connect() {
+  // WebSocket проксирует ввод/вывод между xterm.js и SSH-процессом на сервере.
   setStatus('connecting', 'Подключение…');
   showOverlay('spinner', 'Подключение…', `Устанавливается SSH-соединение с ${DEVICE_SERIAL}`);
 
@@ -59,7 +57,6 @@ function connect() {
   ws.binaryType = 'arraybuffer';
 
   ws.onopen = () => {
-    // Send current terminal size right away
     ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
   };
 
@@ -72,7 +69,6 @@ function connect() {
         }
       } catch(_) {}
     } else {
-      // Binary: raw terminal output
       term.write(new Uint8Array(e.data));
     }
   };
@@ -91,14 +87,15 @@ function connect() {
 
 }
 
-// Forward keyboard input — registered ONCE, not inside connect()
 term.onData(data => {
+  // Клавиатурный ввод отправляется как бинарные данные, чтобы терминал не ломал спецсимволы.
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(new TextEncoder().encode(data));
   }
 });
 
 function handleStatus(status, message) {
+  // Сервер присылает статусы отдельно от бинарного вывода терминала.
   setStatus(status, message);
   if (status === 'connected') {
     hideOverlay();
@@ -118,7 +115,6 @@ function setStatus(status, message) {
   text.textContent = message;
 }
 
-// ── Overlay ──────────────────────────────────────────────────────────────────
 function showOverlay(type, title, msg, showRetry = false) {
   const ov = document.getElementById('overlay');
   ov.classList.remove('hidden');
@@ -132,7 +128,6 @@ function hideOverlay() {
   document.getElementById('overlay').classList.add('hidden');
 }
 
-// ── Actions ──────────────────────────────────────────────────────────────────
 function reconnect() {
   if (ws) { try { ws.close(); } catch(_) {} }
   term.reset();
@@ -144,8 +139,6 @@ function clearTerminal() {
   term.focus();
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
 connect();
 
-// Keep focus when clicking terminal area
 document.getElementById('terminal-container').addEventListener('click', () => term.focus());

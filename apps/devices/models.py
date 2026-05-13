@@ -21,9 +21,6 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
-# ---------------------------------------------------------------------------
-# Geographic hierarchy
-# ---------------------------------------------------------------------------
 
 class Region(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -104,9 +101,6 @@ class PumpJack(models.Model):
         return f"Скв.{self.well_number} / {self.name}"
 
 
-# ---------------------------------------------------------------------------
-# Device status
-# ---------------------------------------------------------------------------
 
 class DeviceStatus(models.TextChoices):
     NORMAL = "normal", _("Норма")
@@ -119,9 +113,6 @@ class DeviceStatus(models.TextChoices):
     OFFLINE = "offline", _("Отключено / нет связи")
 
 
-# ---------------------------------------------------------------------------
-# Device
-# ---------------------------------------------------------------------------
 
 class Device(models.Model):
     """
@@ -134,10 +125,8 @@ class Device(models.Model):
     pump_jack = models.OneToOneField(PumpJack, on_delete=models.PROTECT, related_name="device")
     serial_number = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=150)
-    # Auth
     auth_key = models.CharField(max_length=128, unique=True, editable=False)
     auth_key_created_at = models.DateTimeField(auto_now_add=True)
-    # Status
     status = models.CharField(
         max_length=30,
         choices=DeviceStatus.choices,
@@ -145,15 +134,12 @@ class Device(models.Model):
         db_index=True,
     )
     is_active = models.BooleanField(default=True, db_index=True)
-    # Connectivity
     is_online = models.BooleanField(default=False, db_index=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
     last_packet_at = models.DateTimeField(null=True, blank=True)
     last_heartbeat_at = models.DateTimeField(null=True, blank=True)
-    # Software
     firmware_version = models.CharField(max_length=50, blank=True)
     model_version = models.CharField(max_length=50, blank=True)
-    # Assignment
     assigned_operator = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -162,20 +148,16 @@ class Device(models.Model):
     )
     tags = models.JSONField(default=list, blank=True)
     notes = models.TextField(blank=True)
-    # Reverse SSH tunnel port (auto-assigned from range 20001-20020)
     tunnel_port = models.IntegerField(
         null=True, blank=True, unique=True,
         help_text=_("Порт обратного SSH-туннеля (30001-30020). Назначается автоматически."),
     )
-    # Reverse VNC tunnel port (auto-assigned from range 31001-31020)
     vnc_tunnel_port = models.IntegerField(
         null=True, blank=True, unique=True,
         help_text=_("Порт обратного VNC-туннеля (31001-31020). Назначается автоматически."),
     )
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    # Soft delete
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -227,7 +209,6 @@ class Device(models.Model):
         self.last_seen_at = timezone.now()
         update_fields = ["is_online", "last_seen_at"]
 
-        # Auto-restore status if device was previously marked offline
         if self.status == DeviceStatus.OFFLINE:
             self.status = DeviceStatus.NORMAL
             update_fields.append("status")
@@ -265,15 +246,11 @@ class Device(models.Model):
         return float(self.pump_jack.longitude)
 
 
-# ---------------------------------------------------------------------------
-# Device Heartbeat
-# ---------------------------------------------------------------------------
 
 class DeviceHeartbeat(models.Model):
     """Periodic health ping from device — append-only, pruned by Celery."""
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="heartbeats")
     received_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    # System diagnostics
     cpu_temp = models.FloatField(null=True, blank=True)
     cpu_usage = models.FloatField(null=True, blank=True)
     memory_total_mb = models.IntegerField(null=True, blank=True)
@@ -285,7 +262,6 @@ class DeviceHeartbeat(models.Model):
     uptime_seconds = models.BigIntegerField(null=True, blank=True)
     network_ssid = models.CharField(max_length=100, blank=True)
     signal_strength_dbm = models.IntegerField(null=True, blank=True)
-    # Raw diagnostics (for forward compatibility)
     raw_data = models.JSONField(default=dict)
 
     class Meta:
@@ -313,9 +289,6 @@ class DeviceHeartbeat(models.Model):
         return None
 
 
-# ---------------------------------------------------------------------------
-# Device Status History
-# ---------------------------------------------------------------------------
 
 class DeviceStatusHistory(models.Model):
     """Immutable record of every status change on a device."""
@@ -329,7 +302,6 @@ class DeviceStatusHistory(models.Model):
     )
     reason = models.TextField(blank=True)
     changed_at = models.DateTimeField(auto_now_add=True)
-    # automated = changed by system (Celery), not human
     is_automated = models.BooleanField(default=False)
 
     class Meta:
@@ -345,9 +317,6 @@ class DeviceStatusHistory(models.Model):
         return f"{self.device.serial_number}: {self.previous_status} → {self.new_status}"
 
 
-# ---------------------------------------------------------------------------
-# Software Version
-# ---------------------------------------------------------------------------
 
 class SoftwareVersion(models.Model):
     """Tracks software/firmware versions deployed to devices."""
@@ -369,9 +338,6 @@ class SoftwareVersion(models.Model):
         return f"{self.device.serial_number} fw:{self.firmware_version} model:{self.model_version}"
 
 
-# ---------------------------------------------------------------------------
-# Operator Comment
-# ---------------------------------------------------------------------------
 
 class OperatorComment(models.Model):
     """Free-text comment left by an operator on a device."""

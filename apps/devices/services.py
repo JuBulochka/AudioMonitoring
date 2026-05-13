@@ -1,6 +1,4 @@
-"""
-Device domain services — business logic, decoupled from views.
-"""
+"""Сервисный слой устройств: авторизация, статусы, heartbeat и данные для карты."""
 import logging
 from datetime import timedelta
 
@@ -15,10 +13,7 @@ logger = logging.getLogger("apps.devices")
 
 
 def authenticate_device(auth_key: str) -> Device | None:
-    """
-    Validate device auth key and return Device or None.
-    Used by device API authentication.
-    """
+    """Проверяет ключ устройства и переводит найденное устройство в онлайн."""
     try:
         device = Device.objects.select_related("pump_jack__site__field__region").get(
             auth_key=auth_key,
@@ -39,12 +34,9 @@ def change_device_status(
     reason: str = "",
     is_automated: bool = False,
 ) -> DeviceStatusHistory:
-    """
-    Change device status and create an immutable history record.
-    Emits an audit log entry for manual changes.
-    """
+    """Меняет статус устройства и сохраняет запись истории для аудита."""
     if device.status == new_status:
-        return None  # No-op
+        return None
 
     history = DeviceStatusHistory.objects.create(
         device=device,
@@ -79,10 +71,7 @@ def change_device_status(
 
 
 def update_device_from_heartbeat(device: Device, heartbeat) -> None:
-    """
-    Update device's live fields after receiving a heartbeat.
-    Also updates the firmware/model version if changed.
-    """
+    """Обновляет последние признаки жизни устройства после heartbeat."""
     updates = {
         "last_heartbeat_at": timezone.now(),
         "last_seen_at": timezone.now(),
@@ -107,9 +96,10 @@ def get_devices_for_map(
     bbox=None,
 ) -> list[dict]:
     """
-    Return lightweight device data for map rendering.
-    Filtered by viewport bbox (sw_lat, sw_lng, ne_lat, ne_lng) when provided.
-    Returns only fields needed for map markers — avoids loading full objects.
+    Готовит облегченный список устройств для карты.
+
+    Здесь намеренно используется values(), чтобы не тащить в память полные модели:
+    карте нужны только координаты, статус и несколько полей для подписи маркера.
     """
     qs = Device.objects.filter(is_active=True).select_related(
         "pump_jack__site__field__region"
@@ -153,15 +143,12 @@ def get_devices_for_map(
 
 
 def get_offline_threshold():
+    """Возвращает границу времени, после которой устройство считается офлайн."""
     return timezone.now() - timedelta(minutes=settings.OFFLINE_THRESHOLD_MINUTES)
 
 
 def detect_offline_devices():
-    """
-    Called by Celery task every 5 minutes.
-    Marks devices offline if no heartbeat within threshold.
-    Returns list of newly-offline device IDs.
-    """
+    """Находит устройства без свежего heartbeat и переводит их в офлайн."""
     threshold = get_offline_threshold()
     newly_offline = []
 

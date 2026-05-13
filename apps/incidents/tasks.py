@@ -1,4 +1,4 @@
-"""Incident Celery tasks."""
+"""Фоновые задачи создания и группировки инцидентов."""
 import logging
 from datetime import timedelta
 
@@ -10,10 +10,7 @@ logger = logging.getLogger("apps.incidents")
 
 @shared_task(name="apps.incidents.tasks.process_anomalous_packet")
 def process_anomalous_packet(packet_id: str):
-    """
-    Called after an anomalous packet is ingested.
-    Creates an Incident if severity is warning/critical and no open incident exists.
-    """
+    """Создает инцидент по аномальному пакету, если похожего открытого еще нет."""
     from apps.packets.models import AudioPacket, SeverityLevel
     from apps.incidents.models import Incident, IncidentType, IncidentStatus, IncidentSeverity
     from apps.alerts.services import create_critical_anomaly_alert
@@ -33,7 +30,6 @@ def process_anomalous_packet(packet_id: str):
         else IncidentSeverity.WARNING
     )
 
-    # Check for existing open incident of same type to avoid duplicates
     existing = Incident.objects.filter(
         device=device,
         incident_type=IncidentType.AUDIO_ANOMALY,
@@ -43,7 +39,6 @@ def process_anomalous_packet(packet_id: str):
     ).first()
 
     if existing:
-        # Link packet to existing incident via comment
         from apps.incidents.models import IncidentComment
         IncidentComment.objects.create(
             incident=existing,
@@ -84,10 +79,7 @@ def process_anomalous_packet(packet_id: str):
 
 @shared_task(name="apps.incidents.tasks.detect_frequent_anomalies")
 def detect_frequent_anomalies():
-    """
-    Hourly: detect devices with ≥5 anomalous packets in last 24h.
-    Create REPEATED_FAULT incident if not already open.
-    """
+    """Находит устройства с частыми аномалиями за сутки и создает общий инцидент."""
     from apps.packets.models import AudioPacket
     from apps.incidents.models import Incident, IncidentType, IncidentStatus, IncidentSeverity
     from apps.alerts.services import create_alert

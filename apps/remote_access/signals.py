@@ -1,11 +1,11 @@
-"""Remote access signals."""
+"""Сигналы для обслуживания журнала удаленного доступа."""
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
 @receiver(post_save, sender="remote_access.RemoteAccessSession")
 def trim_session_log(sender, instance, created, **kwargs):
-    """Keep only the 20 most recent sessions. Delete older ones."""
+    """Оставляет в журнале только последние сессии, чтобы таблица не разрасталась."""
     if not created:
         return
     MAX_SESSIONS = 20

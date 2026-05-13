@@ -1,7 +1,4 @@
-"""
-ML analyzer — Isolation Forest + YAMNet.
-Loaded once at service startup, reused for every request.
-"""
+"""ML-анализатор аудио: Isolation Forest для аномалий и YAMNet для типа звука."""
 import csv
 import io
 import json
@@ -15,14 +12,12 @@ import numpy as np
 
 log = logging.getLogger("ml_service")
 
-# ── Параметры ─────────────────────────────────────────────
 MODELS_DIR  = os.path.join(os.path.dirname(__file__), "ml_models")
 SR_MFCC     = 22050
 SR_YAMNET   = 16000
 DURATION    = 5
 N_MFCC      = 40
 
-# Группы YAMNet → AudioClass (из Django models.py)
 YAMNET_GROUP_TO_CLASS = {
     "стук / удар":       "knock",
     "скрип":             "squeak",
@@ -30,7 +25,6 @@ YAMNET_GROUP_TO_CLASS = {
     "речь / голос":      "speech",
     "вибрация / трение": "grinding",
     "шум":               "noise",
-    # "двигатель / механизм" → контекст нормы, не аномальный класс
 }
 
 RELEVANT_GROUPS = {
@@ -60,7 +54,7 @@ YAMNET_CLASS_MAP_URL = (
 
 
 class Analyzer:
-    """Loads models once and exposes analyze()."""
+    """Загружает модели один раз при старте сервиса и переиспользует их в запросах."""
 
     def __init__(self):
         self.anomaly_model = None
@@ -71,9 +65,9 @@ class Analyzer:
         self.group_indices = None
         self.ready         = False
 
-    # ── Загрузка ──────────────────────────────────────────
 
     def load(self):
+        """Поднимает все модели и справочники, без которых /analyze не должен работать."""
         log.info("Loading Isolation Forest...")
         self.anomaly_model = joblib.load(os.path.join(MODELS_DIR, "anomaly_model.pkl"))
         self.scaler        = joblib.load(os.path.join(MODELS_DIR, "anomaly_scaler.pkl"))
@@ -95,14 +89,13 @@ class Analyzer:
         log.info("Analyzer ready.")
 
     def _load_class_names(self):
-        # 1. Try local file (bundled in Docker image)
+        """Читает карту классов YAMNet локально, а при отсутствии пробует скачать ее."""
         local_csv = os.path.join(os.path.dirname(__file__), "yamnet_class_map.csv")
         if os.path.exists(local_csv):
             try:
                 with open(local_csv, encoding="utf-8") as f:
                     reader = csv.DictReader(f)
                     rows = list(reader)
-                # Build full 521-element list by index
                 names = [f"class_{i}" for i in range(521)]
                 for row in rows:
                     idx = int(row["index"])
@@ -113,7 +106,6 @@ class Analyzer:
             except Exception as e:
                 log.warning("Could not read local class map: %s", e)
 
-        # 2. Try downloading from GitHub
         try:
             with urllib.request.urlopen(YAMNET_CLASS_MAP_URL, timeout=10) as r:
                 content = r.read().decode("utf-8")
@@ -124,6 +116,7 @@ class Analyzer:
             return [f"class_{i}" for i in range(521)]
 
     def _build_group_indices(self):
+        """Собирает индексы YAMNet-классов в понятные бизнес-группы звуков."""
         result = {}
         for group, keywords in RELEVANT_GROUPS.items():
             result[group] = [
@@ -132,10 +125,10 @@ class Analyzer:
             ]
         return result
 
-    # ── Признаки (Isolation Forest) ───────────────────────
 
     @staticmethod
     def _extract_mfcc_features(path: str) -> np.ndarray:
+        """Преобразует аудиофайл в числовой вектор признаков для Isolation Forest."""
         y, sr = librosa.load(path, sr=SR_MFCC, duration=DURATION)
         target = SR_MFCC * DURATION
         if len(y) < target:
@@ -161,6 +154,7 @@ class Analyzer:
         ]).reshape(1, -1)
 
     def _score_to_pct(self, score: float) -> int:
+        """Переводит сырой score модели в процент аномальности для интерфейса."""
         mean = self.stats["score_mean"]
         thr  = self.stats["threshold"]
         std  = self.stats["score_std"]
@@ -174,6 +168,7 @@ class Analyzer:
             return round(50 + min(50, margin / max(scale, 0.01) * 50))
 
     def _run_isolation_forest(self, path: str) -> dict:
+        """Запускает модель аномалий и возвращает техническую оценку отклонения."""
         feat   = self._extract_mfcc_features(path)
         scaled = self.scaler.transform(feat)
         pred   = self.anomaly_model.predict(scaled)[0]
@@ -185,9 +180,9 @@ class Analyzer:
             "threshold":   round(self.stats["threshold"], 4),
         }
 
-    # ── YAMNet ────────────────────────────────────────────
 
     def _run_yamnet(self, path: str) -> dict:
+        """Определяет наиболее вероятные звуковые группы через YAMNet."""
         import tensorflow as tf
         y, _ = librosa.load(path, sr=SR_YAMNET, mono=True)
         waveform    = tf.constant(y, dtype=tf.float32)
@@ -205,18 +200,16 @@ class Analyzer:
         }
         return {"top5": top5, "groups": groups}
 
-    # ── Объединение в AudioClass scores ───────────────────
 
     @staticmethod
     def _compute_class_scores(anomaly_pct: int, yamnet_groups: dict) -> dict:
         """
-        Combines anomaly detection + YAMNet into normalized class scores (0-1).
+        Объединяет процент аномальности и группы YAMNet в оценки классов 0..1.
 
-        Logic:
-        - normal  = 1 - anomaly_factor
-        - each anomaly class = (relative_yamnet_weight) * anomaly_factor
+        Isolation Forest отвечает за силу отклонения, а YAMNet помогает понять,
+        на какой именно тип звука это отклонение больше похоже.
         """
-        factor = anomaly_pct / 100  # 0.0 — 1.0
+        factor = anomaly_pct / 100
 
         yamnet_anomaly = {
             audio_cls: yamnet_groups.get(group, 0.0)
@@ -226,16 +219,16 @@ class Analyzer:
 
         scores = {"normal": round(max(0.0, 1.0 - factor), 4)}
         for cls, ys in yamnet_anomaly.items():
-            relative       = ys / max_yamnet          # 0-1, relative dominance
+            relative       = ys / max_yamnet
             scores[cls]    = round(min(1.0, relative * factor), 4)
 
         scores["foreign_sounds"] = 0.0
         scores["other_anomaly"]  = 0.0
         return scores
 
-    # ── Публичный метод ───────────────────────────────────
 
     def analyze(self, file_path: str) -> dict:
+        """Публичный метод анализа одного аудиофайла."""
         if not self.ready:
             raise RuntimeError("Analyzer not loaded")
         if not os.path.exists(file_path):

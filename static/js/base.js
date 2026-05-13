@@ -1,11 +1,9 @@
-// ════════════════════════════════════════
-//  Theme toggle
-// ════════════════════════════════════════
 const html           = document.documentElement;
 const themeToggleBtn  = document.getElementById('themeToggle');
 const themeToggleMob  = document.getElementById('themeToggleMobile');
 
 function applyTheme(theme) {
+  // Тема хранится локально, чтобы интерфейс не мигал при переходе между страницами.
   html.setAttribute('data-theme',    theme);
   html.setAttribute('data-bs-theme', theme);
   localStorage.setItem('pj-theme', theme);
@@ -16,7 +14,6 @@ function applyTheme(theme) {
   document.dispatchEvent(new Event('themeChanged'));
 }
 
-// Init from storage (default: light)
 applyTheme(localStorage.getItem('pj-theme') || 'light');
 
 themeToggleBtn.addEventListener('click', () => {
@@ -26,7 +23,6 @@ themeToggleMob.addEventListener('click', () => {
   applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 });
 
-// Offcanvas close btn: invert in dark theme
 function syncOffcanvasClose() {
   const btn = document.getElementById('offcanvasClose');
   if (!btn) return;
@@ -36,12 +32,10 @@ function syncOffcanvasClose() {
 syncOffcanvasClose();
 document.addEventListener('themeChanged', syncOffcanvasClose);
 
-// ════════════════════════════════════════
-//  Toast helper
-// ════════════════════════════════════════
 const toastContainer = document.getElementById('toast-container');
 
 function showToast(title, message, level, delay) {
+  // Единая отрисовка toast-уведомлений для Django messages и WebSocket-событий.
   delay = delay || 5000;
   const iconMap = {
     success: 'bi-check-circle-fill',
@@ -83,7 +77,6 @@ function showToast(title, message, level, delay) {
   toastContainer.insertAdjacentHTML('beforeend', html);
   const el = document.getElementById(id);
 
-  // Auto-remove
   setTimeout(() => {
     el.style.transition = 'opacity .4s, transform .4s';
     el.style.opacity    = '0';
@@ -91,7 +84,6 @@ function showToast(title, message, level, delay) {
     setTimeout(() => el.remove(), 400);
   }, delay);
 
-  // Manual close
   el.querySelector('[data-bs-dismiss="toast"]').addEventListener('click', () => {
     el.style.transition = 'opacity .2s';
     el.style.opacity    = '0';
@@ -99,7 +91,6 @@ function showToast(title, message, level, delay) {
   });
 }
 
-// Progress bar animation
 const toastStyle = document.createElement('style');
 toastStyle.textContent = `
   @keyframes toastProgress {
@@ -114,7 +105,6 @@ toastStyle.textContent = `
 `;
 document.head.appendChild(toastStyle);
 
-// ── Show Django messages as toasts ──────
 const djMsgEl = document.getElementById('django-messages');
 if (djMsgEl) {
   try {
@@ -128,9 +118,6 @@ if (djMsgEl) {
   } catch(_) {}
 }
 
-// ════════════════════════════════════════
-//  Notification badge
-// ════════════════════════════════════════
 const badge = document.getElementById('notif-badge');
 function updateBadge(count) {
   if (count > 0) { badge.style.display = 'flex'; badge.textContent = count > 99 ? '99+' : count; }
@@ -138,10 +125,8 @@ function updateBadge(count) {
 }
 updateBadge(window.AppConfig.unreadNotificationsCount || 0);
 
-// ════════════════════════════════════════
-//  WebSocket real-time alerts
-// ════════════════════════════════════════
 if (window.AppConfig.isAuthenticated) {
+// Уведомления приходят в реальном времени, без ручного обновления страницы.
 const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const alertWs = new WebSocket(`${wsProto}//${window.location.host}/ws/alerts/`);
 alertWs.onmessage = (e) => {

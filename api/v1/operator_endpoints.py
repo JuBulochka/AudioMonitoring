@@ -16,9 +16,6 @@ from apps.common.permissions import CanManageDevices, IsOperatorOrAbove
 from apps.users.access import filter_devices_by_user
 
 
-# ---------------------------------------------------------------------------
-# Serializers (inline for brevity — in a full project, move to serializers.py)
-# ---------------------------------------------------------------------------
 from rest_framework import serializers
 
 
@@ -118,9 +115,6 @@ class OperatorCommentSerializer(serializers.ModelSerializer):
         return "System"
 
 
-# ---------------------------------------------------------------------------
-# Filters
-# ---------------------------------------------------------------------------
 class DeviceFilter(filters.FilterSet):
     region = filters.NumberFilter(field_name="pump_jack__site__field__region")
     field = filters.NumberFilter(field_name="pump_jack__site__field")
@@ -141,9 +135,6 @@ class DeviceFilter(filters.FilterSet):
         fields = ["region", "field", "status", "is_online"]
 
 
-# ---------------------------------------------------------------------------
-# Views
-# ---------------------------------------------------------------------------
 
 class DeviceListView(generics.ListAPIView):
     """
@@ -186,10 +177,7 @@ class DeviceDetailView(generics.RetrieveAPIView):
 
 
 class DeviceStatusUpdateView(APIView):
-    """
-    PATCH /api/v1/devices/<id>/status/
-    Update device status with reason.
-    """
+    """Меняет статус устройства с обязательной записью причины."""
     permission_classes = [IsAuthenticated, CanManageDevices]
 
     def patch(self, request, id):
@@ -269,9 +257,6 @@ class DeviceRotateKeyView(APIView):
         return Response({"success": True, "new_auth_key": device.auth_key})
 
 
-# ---------------------------------------------------------------------------
-# URL patterns
-# ---------------------------------------------------------------------------
 from django.urls import path  # noqa: E402
 
 urlpatterns = [

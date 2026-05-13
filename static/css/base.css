@@ -1,6 +1,4 @@
-/* ══════════════════════════════════════════════════════
-       Theme variables
-       ══════════════════════════════════════════════════════ */
+
     :root {
       --sidebar-width:  240px;
       --topbar-height:  56px;
@@ -11,7 +9,7 @@
       --clr-info:       #0dcaf0;
     }
 
-    /* Light theme (default) */
+
     html[data-theme="light"] {
       --bg-body:          #f6f8fa;
       --bg-sidebar:       #ffffff;
@@ -38,7 +36,7 @@
       --offline-clr:      #636c76;
     }
 
-    /* Dark theme */
+
     html[data-theme="dark"] {
       --bg-body:          #0f1117;
       --bg-sidebar:       #161b22;
@@ -65,14 +63,14 @@
       --offline-clr:      #8b949e;
     }
 
-    /* ── Base ─────────────────────────────────────────── */
+
     body {
       background: var(--bg-body);
       color: var(--txt-primary);
       transition: background .2s, color .2s;
     }
 
-    /* ── Sidebar ──────────────────────────────────────── */
+
     .sidebar {
       width: var(--sidebar-width);
       min-height: 100vh;
@@ -123,7 +121,7 @@
       margin-top: .5rem;
     }
 
-    /* ── Theme toggle ─────────────────────────────────── */
+
     .theme-toggle {
       background: none;
       border: 1px solid var(--border-clr);
@@ -142,7 +140,7 @@
       background: var(--sidebar-active);
     }
 
-    /* ── Main layout ──────────────────────────────────── */
+
     .main-wrapper { margin-left: var(--sidebar-width); min-height: 100vh; }
 
     .topbar {
@@ -162,7 +160,7 @@
 
     .content-area { padding: 1.5rem; }
 
-    /* ── Cards ────────────────────────────────────────── */
+
     .card {
       background: var(--bg-card) !important;
       border-color: var(--border-clr) !important;
@@ -173,7 +171,7 @@
       border-color: var(--border-clr) !important;
     }
 
-    /* ── Tables ───────────────────────────────────────── */
+
     .table {
       --bs-table-bg: transparent;
       --bs-table-color: var(--txt-primary);
@@ -188,7 +186,7 @@
     }
     .table td { border-color: var(--bg-card-header); vertical-align: middle; }
 
-    /* ── Forms ────────────────────────────────────────── */
+
     .form-control, .form-select {
       background: var(--bg-input);
       border-color: var(--border-clr);
@@ -206,7 +204,7 @@
       box-shadow: 0 0 0 .2rem rgba(88,166,255,.2);
     }
 
-    /* ── Buttons ──────────────────────────────────────── */
+
     .btn-outline-secondary {
       color: var(--txt-muted);
       border-color: var(--border-clr);
@@ -217,7 +215,7 @@
       border-color: var(--txt-muted);
     }
 
-    /* ── Stat cards ───────────────────────────────────── */
+
     .stat-card {
       background: var(--bg-card);
       border: 1px solid var(--border-clr);
@@ -227,7 +225,7 @@
     .stat-card .label { font-size: .75rem; color: var(--txt-muted); margin-bottom: .25rem; }
     .stat-card .value { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--txt-primary); }
 
-    /* ── Status/severity helpers ──────────────────────── */
+
     .badge-normal               { background: #dafbe1; color: #1a7f37; }
     .badge-needs_inspection     { background: #fff8c5; color: #9a6700; }
     .badge-needs_reconfiguration{ background: #fff1e5; color: #bc4c00; }
@@ -253,7 +251,7 @@
     .online-dot  { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--clr-normal); }
     .offline-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--clr-offline); }
 
-    /* ── Notification badge ───────────────────────────── */
+
     #notif-badge {
       margin-left: auto;
       background: #cf222e;
@@ -266,7 +264,7 @@
       flex-shrink: 0;
     }
 
-    /* ── Toast container ──────────────────────────────── */
+
     #toast-container {
       position: fixed; top: 70px; right: 1rem;
       z-index: 9999;
@@ -279,7 +277,7 @@
       font-size: .85rem;
     }
 
-    /* ── Inline code only (не внутри <pre>) ──────────── */
+
     :not(pre) > code {
       color: #0550ae;
       background: #eaf0f8;
@@ -292,7 +290,7 @@
       background: #1c2938;
     }
 
-    /* Блоки <pre> — всегда тёмный фон, светлый текст ── */
+
     pre {
       background: #0d1117 !important;
       color: #c9d1d9 !important;
@@ -310,13 +308,13 @@
       font-size: inherit;
     }
 
-    /* ── Light theme: fix Bootstrap text-color helpers ─── */
+
     html[data-theme="light"] .text-white { color: var(--txt-primary) !important; }
     html[data-theme="light"] .text-light { color: var(--txt-primary) !important; }
     html[data-theme="light"] .text-info  { color: #0969da !important; }
     html[data-theme="light"] .text-secondary { color: var(--txt-muted) !important; }
 
-    /* ── Modal theming ────────────────────────────────── */
+
     .modal-content {
       background: var(--bg-card) !important;
       border-color: var(--border-clr) !important;
@@ -329,7 +327,7 @@
     .modal-footer { border-color: var(--border-clr) !important; }
     .modal-title  { color: var(--txt-primary); }
 
-    /* ── Offcanvas theming ────────────────────────────── */
+
     .offcanvas {
       background: var(--bg-card) !important;
       border-color: var(--border-clr) !important;
@@ -338,13 +336,13 @@
     .offcanvas-header { border-color: var(--border-clr) !important; }
     .offcanvas-title  { color: var(--txt-primary); }
 
-    /* btn-close-white → dark X in light theme */
+
     html[data-theme="light"] .btn-close-white { filter: none; }
 
-    /* ── Progress bar track ───────────────────────────── */
+
     .progress { background: var(--bg-card-header) !important; }
 
-    /* ── Pagination ───────────────────────────────────── */
+
     .page-link {
       background: var(--bg-card);
       border-color: var(--border-clr);
@@ -371,7 +369,7 @@
       color: #0d1117;
     }
 
-    /* ── Dropdown menu theming ────────────────────────── */
+
     .dropdown-menu {
       background: var(--bg-card);
       border-color: var(--border-clr);
@@ -384,27 +382,25 @@
     }
     .dropdown-divider { border-color: var(--border-clr); }
 
-    /* ── Select / option text in light ───────────────── */
+
     html[data-theme="light"] .form-select option { color: #1f2328; }
 
-    /* ── Accordion / list-group ───────────────────────── */
+
     .list-group-item {
       background: var(--bg-card);
       border-color: var(--border-clr);
       color: var(--txt-primary);
     }
 
-    /* ── Alert component (Bootstrap) ─────────────────── */
+
     html[data-theme="dark"] .alert-info    { background:#0d2b4e; color:#58a6ff; border-color:#1d4a7a; }
     html[data-theme="dark"] .alert-warning { background:#4a3000; color:#ffc107; border-color:#6a4800; }
     html[data-theme="dark"] .alert-danger  { background:#4a0e10; color:#f85149; border-color:#6a1c1e; }
     html[data-theme="dark"] .alert-success { background:#1a4731; color:#3fb950; border-color:#2a6347; }
 
-    /* ══════════════════════════════════════════════════════
-       Tablet / Mobile responsive  (≤ 991px)
-       ══════════════════════════════════════════════════════ */
 
-    /* Hamburger toggle — hidden on desktop */
+
+
     .sidebar-toggle {
       display: none;
       background: none;
@@ -424,7 +420,7 @@
       border-color: var(--txt-muted);
     }
 
-    /* Offcanvas sidebar for tablet/mobile */
+
     .offcanvas-sidebar {
       background: var(--bg-sidebar) !important;
       border-right: 1px solid var(--border-clr) !important;
@@ -459,46 +455,46 @@
     }
 
     @media (max-width: 991.98px) {
-      /* Hide fixed sidebar, remove its margin */
+
       .sidebar        { display: none !important; }
       .main-wrapper   { margin-left: 0 !important; }
       .sidebar-toggle { display: flex !important; }
 
-      /* Tighter topbar & content */
+
       .topbar        { padding: 0 .75rem; gap: .6rem; }
       .content-area  { padding: 1rem .75rem; }
 
-      /* Toast position */
+
       #toast-container { right: .5rem; left: .5rem; }
       .pj-toast { min-width: unset; max-width: unset; width: 100%; }
 
-      /* Tables scroll horizontally */
+
       .table-responsive-tablet {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
       }
 
-      /* Stat cards: 2 columns on tablet */
+
       .stat-grid-tablet {
         grid-template-columns: repeat(2, 1fr) !important;
       }
       .stat-card .value { font-size: 1.6rem; }
 
-      /* Give form controls bigger tap targets */
+
       .form-control, .form-select { min-height: 40px; font-size: .9rem; }
       .btn { min-height: 38px; }
       .btn-sm { min-height: 32px; font-size: .8rem; }
 
-      /* Reduce card padding */
+
       .card-body { padding: .85rem; }
       .card-header { padding: .6rem .85rem; }
 
-      /* Pagination: bigger tap targets */
+
       .page-link { padding: .45rem .7rem; font-size: .85rem; }
     }
 
     @media (max-width: 575.98px) {
-      /* Phone: even tighter */
+
       .content-area { padding: .75rem .5rem; }
       .topbar { padding: 0 .5rem; }
       .topbar .page-title { font-size: .88rem; }
