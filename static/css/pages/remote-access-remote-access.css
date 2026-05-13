@@ -1,0 +1,30 @@
+/* Link accent adapts to theme */
+  .link-accent { color: #0550ae; text-decoration: none; }
+  html[data-theme="dark"] .link-accent { color: #58a6ff; }
+  .link-accent:hover { text-decoration: underline; }
+
+  /* "Commands" / "Desktop" secondary button */
+  .btn-ghost {
+    background: var(--bg-card-header);
+    border-color: var(--border-clr);
+    color: var(--txt-primary);
+    font-size: .75rem;
+    padding: 4px 12px;
+  }
+  .btn-ghost:hover {
+    background: var(--bg-hover);
+    border-color: var(--txt-muted);
+    color: var(--txt-primary);
+  }
+
+  /* Tunnel port badge */
+  .badge-port {
+    background: var(--bg-card-header);
+    border: 1px solid var(--border-clr);
+    font-family: monospace;
+    font-size: .7rem;
+  }
+
+  /* Device card online border accent */
+  .card-online  { border-color: #238636 !important; }
+  .card-offline { border-color: var(--border-clr) !important; }

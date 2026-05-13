@@ -45,6 +45,26 @@ def filter_devices_by_user(qs, user):
     return qs.filter(pump_jack__site__field_id__in=field_ids)
 
 
+def filter_regions_by_user(qs, user):
+    """Filter Region queryset to regions that contain user's assigned fields."""
+    field_ids = user.get_allowed_field_ids()
+    if field_ids is None:
+        return qs
+    if not field_ids:
+        return qs.none()
+    return qs.filter(fields__id__in=field_ids).distinct()
+
+
+def user_can_access_device(user, device) -> bool:
+    """Return whether user may access a concrete Device instance."""
+    field_ids = user.get_allowed_field_ids()
+    if field_ids is None:
+        return True
+    if not field_ids or not device.pump_jack_id:
+        return False
+    return device.pump_jack.site.field_id in field_ids
+
+
 def filter_incidents_by_user(qs, user):
     """Filter Incident queryset by user's allowed fields."""
     field_ids = user.get_allowed_field_ids()

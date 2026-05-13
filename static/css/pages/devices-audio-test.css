@@ -1,0 +1,33 @@
+.score-row { margin-bottom: .5rem; }
+  .score-label { font-size:.82rem; color:var(--txt-muted); width:170px; flex-shrink:0; }
+  .score-bar-wrap { flex:1; background:var(--bg-card-header); border-radius:6px; height:16px; overflow:hidden; }
+  .score-bar { height:100%; border-radius:6px; transition:width .5s ease; }
+  .score-pct { font-size:.78rem; color:var(--txt-muted); width:42px; text-align:right; flex-shrink:0; }
+
+  .anomaly-circle {
+    width:120px; height:120px; border-radius:50%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:1.8rem; font-weight:700; border:5px solid;
+  }
+  .anomaly-circle.ok   { border-color:#28a745; color:#28a745; }
+  .anomaly-circle.warn { border-color:#ffc107; color:#9a6700; }
+  .anomaly-circle.crit { border-color:#dc3545; color:#dc3545; }
+
+  .yamnet-chip {
+    display:inline-flex; align-items:center; gap:.4rem;
+    background:var(--bg-card-header); border:1px solid var(--border-clr);
+    border-radius:20px; padding:.25rem .75rem; font-size:.8rem; color:var(--txt-primary); margin:.2rem;
+  }
+  .yamnet-chip .sb { background:var(--border-clr); border-radius:10px; padding:.05rem .4rem; font-size:.72rem; color:var(--txt-muted); }
+
+  @keyframes progressPulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+
+  /* custom file input */
+  .file-pick-area {
+    border:2px dashed var(--border-clr); border-radius:10px;
+    padding:2rem 1.5rem; text-align:center;
+    background:var(--bg-card); transition:border-color .2s, background .2s;
+    cursor:pointer;
+  }
+  .file-pick-area:hover { border-color:#0969da; background:rgba(9,105,218,.04); }
+  .file-pick-area input[type=file] { display:none; }

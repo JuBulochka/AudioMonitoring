@@ -1,0 +1,131 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Segoe UI', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 0 12px;
+    height: 40px;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .topbar-title {
+    font-size: .82rem;
+    font-family: monospace;
+    color: #c9d1d9;
+  }
+  .topbar-title span { color: #8b949e; }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #e3b341;
+    transition: background .3s;
+    flex-shrink: 0;
+  }
+  .status-dot.connected  { background: #3fb950; box-shadow: 0 0 6px #3fb95080; }
+  .status-dot.error      { background: #f85149; }
+  .status-dot.disconnected { background: #8b949e; }
+
+  .status-text {
+    font-size: .72rem;
+    color: #8b949e;
+    transition: color .3s;
+    max-width: 420px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .status-text.connected  { color: #3fb950; }
+  .status-text.error      { color: #f85149; }
+
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+  .btn-topbar {
+    background: none;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    font-size: .72rem;
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .btn-topbar:hover { border-color: #58a6ff; color: #58a6ff; }
+  .btn-topbar.danger:hover { border-color: #f85149; color: #f85149; }
+
+  /* ── Terminal area ── */
+  #terminal-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    padding: 4px;
+  }
+  #terminal {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Overlay (connecting / error) ── */
+  #overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(13,17,23,.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    z-index: 10;
+    transition: opacity .3s;
+  }
+  #overlay.hidden { opacity: 0; pointer-events: none; }
+
+  .overlay-icon { font-size: 2.5rem; }
+  .overlay-title { font-size: 1rem; font-weight: 600; }
+  .overlay-msg   { font-size: .78rem; color: #8b949e; text-align: center; max-width: 480px; line-height: 1.5; }
+  .overlay-spinner {
+    width: 28px; height: 28px;
+    border: 3px solid #30363d;
+    border-top-color: #58a6ff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .retry-btn {
+    margin-top: 4px;
+    padding: 6px 18px;
+    background: #1f6feb;
+    border: none;
+    color: #fff;
+    border-radius: 6px;
+    font-size: .8rem;
+    cursor: pointer;
+  }
+  .retry-btn:hover { background: #388bfd; }
+
+  /* ── Device info panel ── */
+  .device-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: #21262d;
+    border-radius: 5px;
+    padding: 3px 8px;
+  }
+  .device-badge .serial { font-family: monospace; font-size: .78rem; color: #58a6ff; }
+  .device-badge .port   { font-family: monospace; font-size: .7rem; color: #8b949e; }

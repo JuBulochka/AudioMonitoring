@@ -21,7 +21,9 @@ from rest_framework.response import Response
 
 from apps.common.permissions import IsDeviceAuthenticated
 from apps.common.throttling import DeviceRateThrottle
+from apps.devices.models import Device
 from apps.remote_access.models import COMMAND_CATALOG, CommandStatus, DeviceCommand
+from apps.users.access import filter_devices_by_user
 
 logger = logging.getLogger("apps.remote_access")
 
@@ -188,9 +190,9 @@ def command_list_create(request):
 
         qs = (
             DeviceCommand.objects
-            .filter(device_id=device_id)
+            .filter(device_id=device_id, device__in=filter_devices_by_user(Device.objects.all(), request.user))
             .select_related("sent_by")
-            .order_by("-created_at")[:100]
+            .order_by("-created_at")
         )
 
         status_filter = request.query_params.get("status")
@@ -198,7 +200,7 @@ def command_list_create(request):
             qs = qs.filter(status=status_filter)
 
         data = []
-        for cmd in qs:
+        for cmd in qs[:100]:
             entry = COMMAND_CATALOG.get(cmd.command_key, {})
             data.append({
                 "id":            str(cmd.id),
@@ -219,7 +221,6 @@ def command_list_create(request):
         return Response(data)
 
     # POST — create command
-    from apps.devices.models import Device
     body        = request.data
     device_id   = body.get("device_id")
     command_key = body.get("command_key")
@@ -234,7 +235,7 @@ def command_list_create(request):
         )
 
     try:
-        device = Device.objects.get(id=device_id, is_active=True)
+        device = filter_devices_by_user(Device.objects.all(), request.user).get(id=device_id, is_active=True)
     except Device.DoesNotExist:
         return Response({"error": "Device not found"}, status=404)
 
@@ -286,7 +287,10 @@ def command_detail(request, command_id):
         return err
 
     try:
-        cmd = DeviceCommand.objects.select_related("device", "sent_by").get(id=command_id)
+        cmd = DeviceCommand.objects.select_related("device", "sent_by").get(
+            id=command_id,
+            device__in=filter_devices_by_user(Device.objects.all(), request.user),
+        )
     except DeviceCommand.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 
@@ -327,7 +331,10 @@ def command_cancel(request, command_id):
         return err
 
     try:
-        cmd = DeviceCommand.objects.get(id=command_id)
+        cmd = DeviceCommand.objects.get(
+            id=command_id,
+            device__in=filter_devices_by_user(Device.objects.all(), request.user),
+        )
     except DeviceCommand.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 

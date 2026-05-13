@@ -30,6 +30,12 @@ class Command(BaseCommand):
 
         # ---- Users ----
         users = {}
+        employee_numbers = {
+            "operator1": "OP-0001",
+            "operator2": "OP-0002",
+            "operator3": "OP-0003",
+            "operator4": "OP-0004",
+        }
         for username, role, fname, lname in [
             ("operator1", UserRole.OPERATOR, "Иван", "Петров"),
             ("operator2", UserRole.OPERATOR, "Мария", "Сидорова"),
@@ -43,9 +49,13 @@ class Command(BaseCommand):
                     first_name=fname,
                     last_name=lname,
                     role=role,
+                    employee_number=employee_numbers[username],
                     is_active=True,
                 ),
             )
+            if not u.employee_number:
+                u.employee_number = employee_numbers[username]
+                u.save(update_fields=["employee_number"])
             if not u.has_usable_password():
                 u.set_password("demo1234567")
                 u.save()

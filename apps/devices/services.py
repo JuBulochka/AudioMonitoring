@@ -99,6 +99,7 @@ def update_device_from_heartbeat(device: Device, heartbeat) -> None:
 
 
 def get_devices_for_map(
+    user=None,
     region_ids=None,
     status_filter=None,
     online_only=False,
@@ -113,6 +114,10 @@ def get_devices_for_map(
     qs = Device.objects.filter(is_active=True).select_related(
         "pump_jack__site__field__region"
     )
+
+    if user is not None:
+        from apps.users.access import filter_devices_by_user
+        qs = filter_devices_by_user(qs, user)
 
     if region_ids:
         qs = qs.filter(pump_jack__site__field__region_id__in=region_ids)

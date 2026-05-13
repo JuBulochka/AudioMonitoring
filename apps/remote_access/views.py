@@ -32,10 +32,14 @@ def verify_access(request, device_id):
     Admins still must verify (they can use their own password).
     """
     from apps.devices.models import Device
+    from apps.users.access import filter_devices_by_user
     from apps.users.models import User, UserRole
 
     device = get_object_or_404(
-        Device.objects.select_related("pump_jack__site__field"),
+        filter_devices_by_user(
+            Device.objects.select_related("pump_jack__site__field"),
+            request.user,
+        ),
         id=device_id, is_active=True,
     )
 
@@ -117,16 +121,20 @@ def _require_token(request, device_id, next_url):
 @login_required
 def remote_access_log(request):
     from apps.devices.models import Device
+    from apps.users.access import filter_devices_by_user
 
     devices = (
-        Device.objects
-        .filter(is_active=True)
+        filter_devices_by_user(
+            Device.objects.filter(is_active=True),
+            request.user,
+        )
         .select_related("pump_jack__site__field__region", "assigned_operator")
         .order_by("-is_online", "pump_jack__site__field__region__name", "name")
     )
 
     ses_qs = (
         RemoteAccessSession.objects
+        .filter(device__in=devices)
         .select_related("device", "operator")
         .order_by("-created_at")
     )
@@ -156,11 +164,15 @@ def remote_access_log(request):
 @login_required
 def terminal(request, device_id):
     from apps.devices.models import Device
+    from apps.users.access import filter_devices_by_user
     from apps.common.models import AuditLog
     from django.urls import reverse
 
     device = get_object_or_404(
-        Device.objects.select_related("pump_jack__site__field__region"),
+        filter_devices_by_user(
+            Device.objects.select_related("pump_jack__site__field__region"),
+            request.user,
+        ),
         id=device_id, is_active=True,
     )
 
@@ -186,11 +198,15 @@ def terminal(request, device_id):
 def commands(request, device_id):
     """Command dispatch page for a specific device."""
     from apps.devices.models import Device
+    from apps.users.access import filter_devices_by_user
     from apps.common.models import AuditLog
     from django.urls import reverse
 
     device = get_object_or_404(
-        Device.objects.select_related("pump_jack__site__field__region"),
+        filter_devices_by_user(
+            Device.objects.select_related("pump_jack__site__field__region"),
+            request.user,
+        ),
         id=device_id, is_active=True,
     )
 

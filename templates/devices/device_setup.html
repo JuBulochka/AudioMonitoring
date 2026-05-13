@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Подключение {{ device.name }} — АСУТП Мониторинг{% endblock %}
 {% block page_title %}Подключение устройства{% endblock %}
 
@@ -102,14 +103,5 @@ sudo systemctl stop pumpjack-edge</code></pre>
   </a>
 </div>
 
-<script>
-function copyCmd(btn) {
-  const text = document.getElementById('installCmd').innerText.trim();
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Скопировано';
-    setTimeout(() => { btn.innerHTML = orig; }, 1500);
-  });
-}
-</script>
+<script src="{% static 'js/pages/devices-device-setup.js' %}"></script>
 {% endblock %}

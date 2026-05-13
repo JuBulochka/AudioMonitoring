@@ -64,6 +64,7 @@ def map_devices(request):
     anomaly_only = params.get("anomaly_only") == "true"
 
     devices = get_devices_for_map(
+        user=request.user,
         region_ids=region_ids,
         status_filter=status_filter,
         online_only=online_only,

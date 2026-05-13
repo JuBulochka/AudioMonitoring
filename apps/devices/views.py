@@ -14,7 +14,7 @@ from .models import Device, DeviceStatus, Region, Field, Site, PumpJack
 @login_required
 def device_list(request):
     from apps.devices.models import Region
-    from apps.users.access import filter_devices_by_user
+    from apps.users.access import filter_devices_by_user, filter_regions_by_user
 
     qs = filter_devices_by_user(
         Device.objects.filter(is_active=True).select_related(
@@ -46,7 +46,7 @@ def device_list(request):
 
     ctx = {
         "devices": qs,
-        "regions": Region.objects.all().order_by("name"),
+        "regions": filter_regions_by_user(Region.objects.all(), request.user).order_by("name"),
         "device_statuses": DeviceStatus.choices,
         "filter_region": region_id or "",
         "filter_status": status or "",
@@ -59,10 +59,14 @@ def device_list(request):
 @login_required
 def device_detail(request, device_id):
     from apps.packets.models import AudioPacket, SeverityLevel
+    from apps.users.access import filter_devices_by_user
 
     device = get_object_or_404(
-        Device.objects.select_related(
-            "pump_jack__site__field__region", "assigned_operator"
+        filter_devices_by_user(
+            Device.objects.select_related(
+                "pump_jack__site__field__region", "assigned_operator"
+            ),
+            request.user,
         ),
         id=device_id, is_active=True,
     )
@@ -258,7 +262,12 @@ def device_create(request):
 @login_required
 def device_setup(request, device_id):
     """Setup instructions page shown after device creation."""
-    device = get_object_or_404(Device, id=device_id, is_active=True)
+    from apps.users.access import filter_devices_by_user
+    device = get_object_or_404(
+        filter_devices_by_user(Device.objects.all(), request.user),
+        id=device_id,
+        is_active=True,
+    )
     host   = request.get_host()
     scheme = "https" if request.is_secure() else "http"
     api_base    = f"{scheme}://{host}"
@@ -277,8 +286,9 @@ def device_setup(request, device_id):
 def device_map(request):
     from apps.devices.models import Region
     from django.conf import settings as django_settings
+    from apps.users.access import filter_regions_by_user
     ctx = {
-        "regions": Region.objects.all().order_by("name"),
+        "regions": filter_regions_by_user(Region.objects.all(), request.user).order_by("name"),
         "device_statuses": DeviceStatus.choices,
         "yandex_maps_api_key": django_settings.YANDEX_MAPS_API_KEY,
     }

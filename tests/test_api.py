@@ -27,6 +27,7 @@ def admin_user(db):
         email="admin@test.local",
         password="testpass1234",
         role=UserRole.ADMIN,
+        employee_number="ADM-TST",
     )
     return u
 
@@ -39,6 +40,7 @@ def operator_user(db):
         email="op@test.local",
         password="testpass1234",
         role=UserRole.OPERATOR,
+        employee_number="OP-TST",
     )
 
 
@@ -77,10 +79,42 @@ def device(db, region):
     return dev
 
 
+@pytest.fixture
+def other_device(db):
+    from apps.devices.models import Region, Field, Site, PumpJack, Device
+    region = Region.objects.create(name="Other Region", code="OR")
+    field = Field.objects.create(region=region, name="Other Field", code="OF",
+                                 latitude=Decimal("56.0"), longitude=Decimal("38.0"))
+    site = Site.objects.create(field=field, name="Other Site", code="OS",
+                               latitude=Decimal("56.01"), longitude=Decimal("38.01"))
+    pj = PumpJack.objects.create(site=site, well_number="999", name="PJ Other",
+                                  latitude=Decimal("56.01"), longitude=Decimal("38.01"))
+    return Device.objects.create(
+        pump_jack=pj,
+        serial_number="OTHER-001",
+        name="Other Device",
+    )
+
+
+@pytest.fixture
+def assigned_operator(operator_user, device):
+    from apps.users.models import OperatorProfile
+    profile, _ = OperatorProfile.objects.get_or_create(user=operator_user)
+    profile.assigned_fields.set([device.pump_jack.site.field])
+    return operator_user
+
+
+@pytest.fixture
+def assigned_client(api_client, assigned_operator):
+    api_client.force_authenticate(user=assigned_operator)
+    return api_client
+
+
 # ---------------------------------------------------------------------------
 # Device auth
 # ---------------------------------------------------------------------------
 
+@pytest.mark.django_db
 class TestDeviceAuth:
     def test_heartbeat_valid_key(self, api_client, device):
         resp = api_client.post(
@@ -99,7 +133,7 @@ class TestDeviceAuth:
             format="json",
             HTTP_X_DEVICE_KEY="invalid-key-xxx",
         )
-        assert resp.status_code == 401
+        assert resp.status_code == 403
 
     def test_heartbeat_marks_device_online(self, api_client, device):
         device.is_online = False
@@ -309,3 +343,42 @@ class TestMapAPI:
     def test_map_devices_bbox_filter(self, auth_client):
         resp = auth_client.get("/api/v1/map/devices/?sw_lat=50&sw_lng=30&ne_lat=70&ne_lng=80")
         assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Operator field scoping
+# ---------------------------------------------------------------------------
+
+class TestOperatorFieldScoping:
+    def test_device_api_list_only_assigned_fields(self, assigned_client, device, other_device):
+        resp = assigned_client.get("/api/v1/devices/")
+        assert resp.status_code == 200
+        payload = resp.json()
+        items = payload.get("results", payload)
+        ids = {item["id"] for item in items}
+        assert str(device.id) in ids
+        assert str(other_device.id) not in ids
+
+    def test_device_api_detail_blocks_unassigned_device(self, assigned_client, other_device):
+        resp = assigned_client.get(f"/api/v1/devices/{other_device.id}/")
+        assert resp.status_code == 404
+
+    def test_map_api_only_assigned_fields(self, assigned_client, device, other_device):
+        resp = assigned_client.get("/api/v1/map/devices/")
+        assert resp.status_code == 200
+        ids = {feature["id"] for feature in resp.json()["features"]}
+        assert str(device.id) in ids
+        assert str(other_device.id) not in ids
+
+    def test_remote_access_page_only_assigned_devices(self, client, assigned_operator, device, other_device):
+        client.force_login(assigned_operator)
+        resp = client.get("/remote-access/")
+        assert resp.status_code == 200
+        content = resp.content.decode("utf-8")
+        assert device.serial_number in content
+        assert other_device.serial_number not in content
+
+    def test_remote_verify_blocks_unassigned_device(self, client, assigned_operator, other_device):
+        client.force_login(assigned_operator)
+        resp = client.get(f"/remote-access/verify/{other_device.id}/")
+        assert resp.status_code == 404

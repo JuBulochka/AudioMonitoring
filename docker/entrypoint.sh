@@ -20,9 +20,13 @@ echo "==> Creating superuser if not exists..."
 python manage.py shell -c "
 from apps.users.models import User
 if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@pumpjack.local', 'admin1234567', role='admin')
+    User.objects.create_superuser('admin', 'admin@pumpjack.local', 'admin1234567', role='admin', employee_number='ADM-0001')
     print('Superuser created: admin / admin1234567')
 else:
+    admin = User.objects.get(username='admin')
+    if not admin.employee_number:
+        admin.employee_number = 'ADM-0001'
+        admin.save(update_fields=['employee_number'])
     print('Superuser already exists.')
 "
 

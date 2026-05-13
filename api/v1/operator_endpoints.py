@@ -13,6 +13,7 @@ from apps.devices.models import Device, DeviceStatus, DeviceHeartbeat, OperatorC
 from apps.devices.services import change_device_status, get_devices_for_map
 from apps.common.pagination import StandardResultsSetPagination
 from apps.common.permissions import CanManageDevices, IsOperatorOrAbove
+from apps.users.access import filter_devices_by_user
 
 
 # ---------------------------------------------------------------------------
@@ -163,14 +164,7 @@ class DeviceListView(generics.ListAPIView):
             "assigned_operator",
         ).prefetch_related("heartbeats")
 
-        user = self.request.user
-        # Region-restrict non-admin operators
-        if not user.is_admin and hasattr(user, "profile"):
-            assigned = user.profile.assigned_fields.values_list("id", flat=True)
-            if assigned:
-                qs = qs.filter(pump_jack__site__field__in=assigned)
-
-        return qs
+        return filter_devices_by_user(qs, self.request.user)
 
 
 from django.db import models  # noqa: E402 — needed for Q above
@@ -185,7 +179,7 @@ class DeviceDetailView(generics.RetrieveAPIView):
     lookup_field = "id"
 
     def get_queryset(self):
-        return Device.objects.filter(is_active=True).select_related(
+        return filter_devices_by_user(Device.objects.filter(is_active=True), self.request.user).select_related(
             "pump_jack__site__field__region",
             "assigned_operator",
         ).prefetch_related("heartbeats")
@@ -200,7 +194,7 @@ class DeviceStatusUpdateView(APIView):
 
     def patch(self, request, id):
         try:
-            device = Device.objects.get(id=id, is_active=True)
+            device = filter_devices_by_user(Device.objects.all(), request.user).get(id=id, is_active=True)
         except Device.DoesNotExist:
             return Response({"error": "Device not found"}, status=404)
 
@@ -233,12 +227,14 @@ class DeviceCommentsView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        allowed_devices = filter_devices_by_user(Device.objects.all(), self.request.user)
         return OperatorComment.objects.filter(
-            device_id=self.kwargs["id"]
+            device_id=self.kwargs["id"],
+            device__in=allowed_devices,
         ).select_related("author")
 
     def perform_create(self, serializer):
-        device = Device.objects.get(id=self.kwargs["id"], is_active=True)
+        device = filter_devices_by_user(Device.objects.all(), self.request.user).get(id=self.kwargs["id"], is_active=True)
         serializer.save(device=device, author=self.request.user)
 
 

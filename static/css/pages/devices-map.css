@@ -1,0 +1,45 @@
+#map {
+    height: calc(100vh - var(--topbar-height) - 3rem - 52px);
+    min-height: 400px;
+    border-radius: .5rem;
+    border: 1px solid var(--border-clr);
+    overflow: hidden;
+    position: relative;
+    transition: filter .3s;
+  }
+
+  /* Тёмная тема — инвертируем тайлы карты через CSS filter */
+  html[data-theme="dark"] #map {
+    filter: invert(1) hue-rotate(180deg) saturate(0.75) brightness(0.85);
+  }
+
+  .map-filters {
+    background: var(--bg-card);
+    border: 1px solid var(--border-clr);
+    border-radius: .5rem;
+    padding: .6rem 1rem;
+    margin-bottom: .75rem;
+  }
+  .map-filters .form-check-label { font-size: .8rem; }
+  #device-count { font-size: .78rem; color: var(--txt-muted); }
+
+  /* Легенда */
+  #map-legend {
+    position: absolute;
+    bottom: 2rem; right: 1rem;
+    z-index: 500;
+    background: var(--bg-card);
+    border: 1px solid var(--border-clr);
+    border-radius: .4rem;
+    padding: .55rem .85rem;
+    font-size: .75rem;
+    color: var(--txt-primary);
+    transition: background .2s, border-color .2s;
+  }
+  #map-legend .leg-title { font-weight: 600; margin-bottom: .35rem; }
+  .leg-item { display: flex; align-items: center; gap: .4rem; margin-bottom: 2px; }
+  .leg-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  .link-accent { color: #0550ae; text-decoration: none; }
+  html[data-theme="dark"] .link-accent { color: #58a6ff; }
+  .link-accent:hover { text-decoration: underline; }
