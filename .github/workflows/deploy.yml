@@ -22,7 +22,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          command_timeout: 20m
+          command_timeout: 45m
           script: |
             set -e
             cd ~/kursachAudio
@@ -30,29 +30,44 @@ jobs:
             export DOCKER_BUILDKIT=1
             export COMPOSE_DOCKER_CLI_BUILD=1
 
+            BEFORE=$(git rev-parse HEAD)
+
             echo "==> Pulling latest code..."
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
+            AFTER=$(git rev-parse HEAD)
 
             echo "==> Checking changed files..."
-            CHANGED=$(git diff HEAD~1 HEAD --name-only)
+            CHANGED=$(git diff "$BEFORE" "$AFTER" --name-only || true)
+            echo "$CHANGED"
 
-            # Rebuild ml-service only if its files changed
+            # Rebuild ml-service only if ML files changed. This image is heavy.
             if echo "$CHANGED" | grep -qE '^ml_service/'; then
               echo "==> Rebuilding ml-service..."
-              docker compose up -d --build ml-service
+              docker compose build ml-service
+              docker compose up -d --no-deps ml-service
+            else
+              echo "==> ml-service unchanged; keeping current container."
             fi
 
-            # Rebuild web/celery if dependencies or Dockerfile changed, otherwise restart
-            if echo "$CHANGED" | grep -qE 'requirements\.txt|apps/.*/Dockerfile|^Dockerfile|docker-compose'; then
+            # Rebuild Django containers only when application/runtime files changed.
+            if echo "$CHANGED" | grep -qE '^(api/|apps/|config/|static/|templates/|tests/|docker/entrypoint\.sh|requirements\.txt|Dockerfile|docker-compose\.yml|manage\.py|conftest\.py|pytest\.ini)'; then
               echo "==> Rebuilding web + celery..."
-              docker compose up -d --build web celery celery-beat
+              docker compose build web celery celery-beat
+              docker compose up -d --no-deps web celery celery-beat
             else
               echo "==> Restarting web + celery..."
               docker compose restart web celery celery-beat
             fi
 
             echo "==> Waiting for web to be ready..."
-            sleep 15
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:8000/ >/dev/null; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS http://127.0.0.1:8000/ >/dev/null
 
             echo "==> Testing nginx config..."
             docker compose exec -T nginx nginx -t
