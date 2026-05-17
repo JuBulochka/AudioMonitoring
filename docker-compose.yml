@@ -41,8 +41,8 @@ services:
       - media_data:/app/media
       - static_data:/app/staticfiles
       - log_data:/app/logs
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
